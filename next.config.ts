@@ -9,26 +9,31 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   async rewrites() {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const backendUrl = isDevelopment
+      ? 'http://localhost:8080'
+      : 'https://api-sale-keyboard-103-82-193-14.sslip.io';
+
     return [
       {
         source: '/api/keyboard',
-        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/keyboard',
+        destination: `${backendUrl}/api/keyboard`,
       },
       {
         source: '/api/properties/:path*',
-        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/properties/:path*',
+        destination: `${backendUrl}/api/properties/:path*`,
       },
       {
         source: '/api/property-groups/:path*',
-        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/property-groups/:path*',
+        destination: `${backendUrl}/api/property-groups/:path*`,
       },
       {
         source: '/api/ai/:path*',
-        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/ai/:path*',
+        destination: `${backendUrl}/api/ai/:path*`,
       },
       {
         source: '/uploads/:path*',
-        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/uploads/:path*',
+        destination: `${backendUrl}/uploads/:path*`,
       }
     ];
   },
