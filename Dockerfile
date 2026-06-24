@@ -22,6 +22,9 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Khởi tạo Prisma Client trước khi build Next.js
+RUN npx prisma generate
+
 RUN npm run build
 
 # Production image, copy all the files and run next
@@ -36,6 +39,12 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+
+# Sao chép các thư viện Prisma và Bcrypt để chạy db push & seed lúc khởi động container
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
@@ -52,6 +61,5 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+# Khởi động: chạy db push cập nhật schema, nạp dữ liệu seed nếu chưa có, sau đó start server Next.js
+CMD ["sh", "-c", "npx prisma db push --schema=./prisma/schema.prisma && node prisma/seed.js && node server.js"]

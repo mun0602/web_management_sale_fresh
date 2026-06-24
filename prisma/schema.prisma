@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  role          String         @default("USER") // SUPER_ADMIN, FINANCE, SUPPORT, READ_ONLY, USER
+  phone         String?
+  name          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+model Plan {
+  id            String         @id @default(uuid())
+  name          String
+  price         Int            // Giá trị tiền tệ VNĐ dạng integer
+  appleId       String?
+  googleId      String?
+  features      String         // Các tính năng ngăn cách bằng dấu phẩy
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id])
+  status    String   @default("active") // active, expired, cancelled
+  startDate DateTime @default(now())
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int
+  productName   String
+  platform      String   // Apple App Store, Google Play, Stripe...
+  status        String   @default("succeeded") // succeeded, refunded, failed
+  transactionId String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  action    String
+  actor     String   // email hoặc ID của admin
+  target    String?
+  details   String?
+  ip        String?
+}

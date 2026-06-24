@@ -12,6 +12,11 @@ export const usersApi = {
     return response.data;
   },
 
+  createUser: async (data: Record<string, unknown>) => {
+    const response = await apiClient.post<ApiResponse<User>>('/admin/users', data);
+    return response.data;
+  },
+
   updateStatus: async (id: string, status: string) => {
     const response = await apiClient.patch<ApiResponse<unknown>>(`/admin/users/${id}/status`, { status });
     return response.data;
@@ -20,5 +25,11 @@ export const usersApi = {
   revokeSessions: async (id: string) => {
     const response = await apiClient.post<ApiResponse<unknown>>(`/admin/users/${id}/revoke-sessions`);
     return response.data;
+  },
+
+  deleteUser: async (id: string) => {
+    const response = await apiClient.delete<ApiResponse<unknown>>(`/admin/users/${id}`);
+    return response.data;
   }
 };
+

@@ -1,20 +1,72 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 
 export async function GET() {
-  return NextResponse.json({
-    data: {
-      netRevenue: 154800000,
-      grossRevenue: 184800000,
-      mrr: 45000000,
-      refund: 30000000,
-      activeUsers: 1250,
-      trialUsers: 340,
-      activeSubscriptions: 890,
-      arpu: 50560
-    }
-  }, {
-    headers: {
-      'Cache-Control': 'no-store, max-age=0'
-    }
-  });
+  try {
+    // 1. Tính toán doanh thu từ bảng Payment thật
+    const payments = await prisma.payment.findMany();
+    const grossRevenue = payments
+      .filter(p => p.status === 'succeeded')
+      .reduce((sum, p) => sum + p.amount, 0);
+    const refund = payments
+      .filter(p => p.status === 'refunded')
+      .reduce((sum, p) => sum + p.amount, 0);
+    const netRevenue = grossRevenue - refund;
+
+    // 2. Đếm số lượng thuê bao hoạt động và người dùng hoạt động
+    const activeSubsCount = await prisma.subscription.count({
+      where: { status: 'active' }
+    });
+
+    const activeUsersCount = await prisma.user.count({
+      where: {
+        subscriptions: {
+          some: { status: 'active' }
+        }
+      }
+    });
+
+    // 3. Đếm số người dùng thử (trial) - ví dụ là các USER chưa thực hiện giao dịch nào
+    const trialUsersCount = await prisma.user.count({
+      where: {
+        role: 'USER',
+        payments: {
+          none: {}
+        }
+      }
+    });
+
+    // 4. Tính toán MRR thực tế từ các thuê bao đang hoạt động
+    const activeSubs = await prisma.subscription.findMany({
+      where: { status: 'active' },
+      include: { plan: true }
+    });
+
+    const mrr = activeSubs.reduce((sum, sub) => {
+      const durationDays = Math.ceil((sub.endDate.getTime() - sub.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      // Chia nhỏ giá gói cước theo số tháng sử dụng (ví dụ: năm chia 12, tháng chia 1)
+      const months = durationDays >= 360 ? 12 : (durationDays >= 28 ? Math.round(durationDays / 30) : 1);
+      const monthlyPrice = sub.plan.price / (months || 1);
+      return sum + Math.round(monthlyPrice);
+    }, 0);
+
+    // ARPU = MRR / Active Users
+    const arpu = activeUsersCount > 0 ? Math.round(mrr / activeUsersCount) : 0;
+
+    return NextResponse.json({
+      data: {
+        netRevenue,
+        grossRevenue,
+        mrr,
+        refund,
+        activeUsers: activeUsersCount,
+        trialUsers: trialUsersCount,
+        activeSubscriptions: activeSubsCount,
+        arpu
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching dashboard summary:', error);
+    return NextResponse.json({ error: { message: 'Lỗi máy chủ khi tải dữ liệu tổng quan.' } }, { status: 500 });
+  }
 }

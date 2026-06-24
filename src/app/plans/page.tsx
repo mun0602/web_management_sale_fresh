@@ -1,12 +1,49 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Package, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { plansApi } from '@/api/plans';
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  appleId: string | null;
+  googleId: string | null;
+  features: string;
+}
 
 export default function PlansPage() {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form states
   const [planName, setPlanName] = useState('');
+  const [planPrice, setPlanPrice] = useState(0);
+  const [appleId, setAppleId] = useState('');
+  const [googleId, setGoogleId] = useState('');
+  const [features, setFeatures] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchPlans = async () => {
+    setLoading(true);
+    try {
+      const response = await plansApi.getPlans();
+      setPlans((response.data as unknown as Plan[]) || []);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.error?.message || 'Lỗi khi tải danh sách gói cước';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
 
   // Đóng modal bằng phím Escape
   useEffect(() => {
@@ -21,9 +58,48 @@ export default function PlansPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showAddModal]);
 
-  const handleAddPlan = (e: React.FormEvent) => {
+  const handleAddPlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.error('Chế độ Demo: Tính năng thêm gói cước bị khóa.');
+    setSubmitting(true);
+    try {
+      await plansApi.createPlan({
+        name: planName,
+        price: Number(planPrice),
+        appleId: appleId || null,
+        googleId: googleId || null,
+        features: features,
+      });
+      toast.success(`Đã tạo gói cước "${planName}" thành công.`);
+      setShowAddModal(false);
+      // Reset form
+      setPlanName('');
+      setPlanPrice(0);
+      setAppleId('');
+      setGoogleId('');
+      setFeatures('');
+      fetchPlans();
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.error?.message || 'Lỗi khi lưu gói cước.';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePlan = async (id: string, name: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa gói cước "${name}"?`)) {
+      return;
+    }
+    try {
+      await plansApi.deletePlan(id);
+      toast.success('Xóa gói cước thành công');
+      fetchPlans();
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.error?.message || 'Lỗi khi xóa gói cước.';
+      toast.error(msg);
+    }
   };
 
   return (
@@ -31,31 +107,55 @@ export default function PlansPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 style={{ marginBottom: 0 }}>Gói dịch vụ (Plans)</h1>
-          <p>Quản lý các gói thuê bao (Pricing & Duration)</p>
+          <p>Quản lý các gói thuê bao (Pricing & Duration) thực tế trong hệ thống</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
           <Plus size={18} style={{ marginRight: '0.5rem' }} /> Thêm gói mới
         </button>
       </div>
 
-      <div className="dashboard-grid">
-        <div className="glass-card plan-card" style={{ position: 'relative' }}>
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.5rem' }}>
-            <button className="btn btn-outline" style={{ padding: '0.25rem' }} title="Sửa" onClick={() => toast.error('Chế độ Demo: Tính năng sửa gói cước bị khóa.')} aria-label="Sửa gói cước"><Edit2 size={16} /></button>
-            <button className="btn btn-outline" style={{ padding: '0.25rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} title="Xóa" onClick={() => toast.error('Chế độ Demo: Tính năng xóa gói cước bị khóa.')} aria-label="Xóa gói cước"><Trash2 size={16} /></button>
-          </div>
-          <Package size={32} color="var(--primary)" style={{ marginBottom: '1rem' }} />
-          <h3>Basic</h3>
-          <div className="price">99.000 ₫ <span>/ tháng</span></div>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>Mã Apple: basic_1m</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
-            <li style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--surface-border)' }}>✓ 1 Thiết bị</li>
-            <li style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--surface-border)' }}>✓ Lọc tin nhắn AI</li>
-            <li style={{ padding: '0.5rem 0' }}>✗ Không có quản lý nhóm</li>
-          </ul>
+      {loading ? (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Đang tải các gói cước...</div>
+      ) : plans.length === 0 ? (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Không có gói cước nào. Hãy thêm gói mới.</div>
+      ) : (
+        <div className="dashboard-grid">
+          {plans.map((p) => {
+            const featureList = p.features ? p.features.split(',') : [];
+            return (
+              <div key={p.id} className="glass-card plan-card" style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ padding: '0.25rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                    title="Xóa" 
+                    onClick={() => handleDeletePlan(p.id, p.name)} 
+                    aria-label="Xóa gói cước"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <Package size={32} color="var(--primary)" style={{ marginBottom: '1rem' }} />
+                <h3>{p.name}</h3>
+                <div className="price">
+                  {p.price.toLocaleString('vi-VN')} ₫
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <span>App Store: {p.appleId || '-'}</span>
+                  <span>Google Play: {p.googleId || '-'}</span>
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
+                  {featureList.map((f, index) => (
+                    <li key={index} style={{ padding: '0.5rem 0', borderBottom: index < featureList.length - 1 ? '1px solid var(--surface-border)' : 'none' }}>
+                      ✓ {f.trim()}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
-        {/* Mock other plans ... */}
-      </div>
+      )}
 
       {showAddModal && (
         <div 
@@ -65,10 +165,10 @@ export default function PlansPage() {
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
         >
           <div className="glass-card" style={{ width: 400, padding: '2rem' }}>
-            <h3 id="modal-title" style={{ marginTop: 0 }}>Thêm Gói dịch vụ</h3>
+            <h3 id="modal-title" style={{ marginTop: 0 }}>Thêm Gói dịch vụ mới</h3>
             <form onSubmit={handleAddPlan} className="flex-col gap-4 mt-4">
               <div>
-                <label htmlFor="plan-name-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Tên gói</label>
+                <label htmlFor="plan-name-input" style={{ display: 'block', marginBottom: '0.25rem' }}>Tên gói</label>
                 <input 
                   id="plan-name-input"
                   type="text" 
@@ -79,17 +179,54 @@ export default function PlansPage() {
                 />
               </div>
               <div>
-                <label htmlFor="plan-price-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Giá (VNĐ)</label>
+                <label htmlFor="plan-price-input" style={{ display: 'block', marginBottom: '0.25rem' }}>Giá (VNĐ)</label>
                 <input 
                   id="plan-price-input"
                   type="number" 
                   required 
+                  value={planPrice}
+                  onChange={e => setPlanPrice(Number(e.target.value))}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-apple-id" style={{ display: 'block', marginBottom: '0.25rem' }}>Apple App Store Product ID</label>
+                <input 
+                  id="plan-apple-id"
+                  type="text" 
+                  value={appleId}
+                  onChange={e => setAppleId(e.target.value)}
+                  placeholder="e.g. com.company.pro.1m"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-google-id" style={{ display: 'block', marginBottom: '0.25rem' }}>Google Play Product ID</label>
+                <input 
+                  id="plan-google-id"
+                  type="text" 
+                  value={googleId}
+                  onChange={e => setGoogleId(e.target.value)}
+                  placeholder="e.g. com.company.pro.1m"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-features" style={{ display: 'block', marginBottom: '0.25rem' }}>Các tính năng (Ngăn cách bằng dấu phẩy)</label>
+                <textarea 
+                  id="plan-features"
+                  required 
+                  value={features}
+                  onChange={e => setFeatures(e.target.value)}
+                  placeholder="e.g. 1 Thiết bị,Lọc tin nhắn AI,Không giới hạn tính năng"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)', minHeight: '80px' }} 
                 />
               </div>
               <div className="flex justify-end gap-2 mt-4">
                 <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled>Lưu (Bị khóa trong Demo)</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Đang tạo...' : 'Tạo gói'}
+                </button>
               </div>
             </form>
           </div>

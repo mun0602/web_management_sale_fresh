@@ -12,6 +12,11 @@ export const paymentsApi = {
     return response.data;
   },
 
+  createPayment: async (data: Record<string, unknown>) => {
+    const response = await apiClient.post<ApiResponse<unknown>>('/admin/payments', data);
+    return response.data;
+  },
+
   refundPayment: async (id: string, data: Record<string, unknown>) => {
     const response = await apiClient.post<ApiResponse<unknown>>(`/admin/payments/${id}/refunds`, data);
     return response.data;
@@ -22,3 +27,4 @@ export const paymentsApi = {
     return response.data;
   }
 };
+

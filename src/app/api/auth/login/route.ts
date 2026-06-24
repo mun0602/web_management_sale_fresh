@@ -7,6 +7,8 @@ import {
   SESSION_TTL_SECONDS,
   signToken,
 } from '@/lib/auth/token';
+import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 const MAX_LOGIN_BODY_BYTES = 4096;
 
@@ -79,14 +81,6 @@ export async function POST(request: Request) {
     return json({ error: 'Yêu cầu quá lớn' }, 413);
   }
 
-  const credentials = getDemoCredentials();
-  if (!credentials) {
-    return json(
-      { error: 'Demo auth chưa được cấu hình hoặc bị tắt trong production' },
-      503,
-    );
-  }
-
   try {
     const rawBody = await request.text();
     if (Buffer.byteLength(rawBody, 'utf8') > MAX_LOGIN_BODY_BYTES) {
@@ -108,15 +102,44 @@ export async function POST(request: Request) {
       return json({ error: 'Yêu cầu không hợp lệ' }, 400);
     }
 
-    const emailMatches = safeTextEqual(email, credentials.email);
-    const passwordMatches = safeTextEqual(password, credentials.password);
-    if (!emailMatches || !passwordMatches) {
+    // 1. Kiểm tra tài khoản trong database thật trước
+    let user = null;
+    try {
+      user = await prisma.user.findUnique({
+        where: { email }
+      });
+    } catch (dbError) {
+      console.error('Database connection failed during login, trying fallback:', dbError);
+    }
+
+    let tokenPayload: { sub: string; role: AdminRole } | null = null;
+
+    if (user && ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY'].includes(user.role)) {
+      const passwordMatches = await bcrypt.compare(password, user.password);
+      if (passwordMatches) {
+        tokenPayload = { sub: user.id, role: user.role as AdminRole };
+      }
+    }
+
+    // 2. Nếu không tìm thấy user hoặc password không khớp, thử dùng Demo Credentials env fallback
+    if (!tokenPayload) {
+      const credentials = getDemoCredentials();
+      if (credentials) {
+        const emailMatches = safeTextEqual(email, credentials.email);
+        const passwordMatches = safeTextEqual(password, credentials.password);
+        if (emailMatches && passwordMatches) {
+          tokenPayload = { sub: credentials.id, role: credentials.role };
+        }
+      }
+    }
+
+    if (!tokenPayload) {
       return json({ error: 'Email hoặc mật khẩu quản trị không đúng' }, 401);
     }
 
     let token: string;
     try {
-      token = signToken({ sub: credentials.id, role: credentials.role });
+      token = signToken(tokenPayload);
     } catch {
       return json({ error: 'Session server chưa được cấu hình an toàn' }, 503);
     }

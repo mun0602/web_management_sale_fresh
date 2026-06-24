@@ -12,6 +12,11 @@ export const subscriptionsApi = {
     return response.data;
   },
 
+  createSubscription: async (data: Record<string, unknown>) => {
+    const response = await apiClient.post<ApiResponse<unknown>>('/admin/subscriptions', data);
+    return response.data;
+  },
+
   adjustSubscription: async (id: string, data: Record<string, unknown>) => {
     const response = await apiClient.post<ApiResponse<unknown>>(`/admin/subscriptions/${id}/adjust`, data);
     return response.data;
@@ -20,5 +25,11 @@ export const subscriptionsApi = {
   cancelSubscription: async (id: string, reason?: string) => {
     const response = await apiClient.post<ApiResponse<unknown>>(`/admin/subscriptions/${id}/cancel`, { reason });
     return response.data;
+  },
+
+  deleteSubscription: async (id: string) => {
+    const response = await apiClient.delete<ApiResponse<unknown>>(`/admin/subscriptions/${id}`);
+    return response.data;
   }
 };
+

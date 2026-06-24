@@ -22,8 +22,14 @@ export const plansApi = {
     return response.data;
   },
 
+  deletePlan: async (id: string) => {
+    const response = await apiClient.delete<ApiResponse<unknown>>(`/admin/plans/${id}`);
+    return response.data;
+  },
+
   addPrice: async (id: string, priceData: Record<string, unknown>) => {
     const response = await apiClient.post<ApiResponse<unknown>>(`/admin/plans/${id}/prices`, priceData);
     return response.data;
   }
 };
+
