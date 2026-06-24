@@ -37,10 +37,7 @@ function getDemoCredentials(): {
   password: string;
   role: AdminRole;
 } | null {
-  if (
-    process.env.NODE_ENV === 'production' ||
-    process.env.ENABLE_DEMO_AUTH !== 'true'
-  ) {
+  if (process.env.ENABLE_DEMO_AUTH !== 'true') {
     return null;
   }
 
