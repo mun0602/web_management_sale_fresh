@@ -21,7 +21,6 @@ const nextConfig: NextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      ...(isDevelopment ? [] : ['upgrade-insecure-requests']),
     ].join('; ');
 
     return [
