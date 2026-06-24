@@ -14,6 +14,22 @@ const nextConfig: NextConfig = {
         source: '/api/keyboard',
         destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/keyboard',
       },
+      {
+        source: '/api/properties/:path*',
+        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/properties/:path*',
+      },
+      {
+        source: '/api/property-groups/:path*',
+        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/property-groups/:path*',
+      },
+      {
+        source: '/api/ai/:path*',
+        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/ai/:path*',
+      },
+      {
+        source: '/uploads/:path*',
+        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/uploads/:path*',
+      }
     ];
   },
   async headers() {
