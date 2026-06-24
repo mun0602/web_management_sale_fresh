@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
     // Chỉ định root tuyệt đối cho Turbopack là thư mục dự án này để tránh cảnh báo (LOW-01)
     root: path.resolve(__dirname),
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/keyboard',
+        destination: 'http://app-override-virtual-hard-drive-rx23i1:8080/api/keyboard',
+      },
+    ];
+  },
   async headers() {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const contentSecurityPolicy = [
