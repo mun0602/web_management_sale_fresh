@@ -3,22 +3,22 @@ import { ApiResponse } from '../types/api';
 
 export const paymentsApi = {
   getPayments: async (params?: Record<string, unknown>) => {
-    const response = await apiClient.get<ApiResponse<unknown[]>>('/api/admin/payments', { params });
+    const response = await apiClient.get<ApiResponse<unknown[]>>('/admin/payments', { params });
     return response.data;
   },
 
   getPaymentById: async (id: string) => {
-    const response = await apiClient.get<ApiResponse<unknown>>(`/api/admin/payments/${id}`);
+    const response = await apiClient.get<ApiResponse<unknown>>(`/admin/payments/${id}`);
     return response.data;
   },
 
   refundPayment: async (id: string, data: Record<string, unknown>) => {
-    const response = await apiClient.post<ApiResponse<unknown>>(`/api/admin/payments/${id}/refunds`, data);
+    const response = await apiClient.post<ApiResponse<unknown>>(`/admin/payments/${id}/refunds`, data);
     return response.data;
   },
   
   getInvoiceById: async (id: string) => {
-    const response = await apiClient.get<ApiResponse<unknown>>(`/api/admin/invoices/${id}`);
+    const response = await apiClient.get<ApiResponse<unknown>>(`/admin/invoices/${id}`);
     return response.data;
   }
 };
