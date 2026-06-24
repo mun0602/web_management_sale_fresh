@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SaleKeyboard Admin Portal
 
-## Getting Started
+Web quản trị nội bộ cho hệ sinh thái SaleKeyboard BĐS. Ứng dụng quản lý người dùng, gói dịch vụ, thuê bao, giao dịch, doanh thu, audit log và tình trạng hệ thống.
 
-First, run the development server:
+Landing Page nằm ở project riêng `web_landing_sale`. Backend dự kiến sử dụng `sale_keyboard_server`; frontend này không sở hữu database hoặc business logic tài chính.
+
+## Công nghệ
+
+- Next.js 16 App Router
+- React 19 + TypeScript
+- Tailwind CSS 4 và CSS tùy chỉnh
+- Axios
+- Recharts
+- Lucide React
+- React Hot Toast
+
+## Yêu cầu môi trường
+
+- Node.js tương thích với Next.js 16
+- npm
+- Backend `sale_keyboard_server` đang chạy hoặc staging API khả dụng
+
+## Cài đặt
+
+```bash
+npm install
+```
+
+Sao chép `.env.example` thành `.env.local`, thay toàn bộ placeholder và tạo
+session secret ngẫu nhiên:
+
+```bash
+cp .env.example .env.local
+openssl rand -base64 32
+```
+
+Demo auth chỉ hoạt động khi `ENABLE_DEMO_AUTH=true` và `NODE_ENV` không phải
+`production`. Production luôn fail-closed cho đến khi tích hợp auth backend thật.
+Không commit `.env.local` hoặc dùng credentials demo trong môi trường dùng chung.
+
+## Chạy development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mặc định truy cập `http://localhost:3000`. Nếu backend cũng dùng cổng 3000, đổi một trong hai cổng và cập nhật `NEXT_PUBLIC_API_URL`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Kiểm tra chất lượng
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+Script test hiện kiểm tra session signing/verification, lint và typecheck. Vẫn cần
+bổ sung component/E2E khi tích hợp backend thật.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Script | Mục đích |
+|---|---|
+| `npm run dev` | Chạy development server |
+| `npm run build` | Build production |
+| `npm run start` | Chạy production build |
+| `npm run lint` | Chạy ESLint |
+| `npm test` | Chạy session tests, lint và typecheck |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Cấu trúc hiện tại
 
-## Deploy on Vercel
+```text
+src/
+  api/axiosConfig.ts
+  app/
+    api/auth/login/route.ts
+    api/auth/logout/route.ts
+    api/auth/me/route.ts
+    page.tsx
+    login/page.tsx
+    users/page.tsx
+    plans/page.tsx
+    subscriptions/page.tsx
+    payments/page.tsx
+    audit/page.tsx
+    system/page.tsx
+  components/
+    SidebarLayout.tsx
+  lib/auth/token.ts
+  proxy.ts
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Trạng thái
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Frontend hiện là prototype UI:
+
+- Login demo dùng credentials từ environment và session cookie được ký; bị tắt ở production.
+- Dashboard và các màn hình đang dùng dữ liệu hardcode/mock.
+- Chưa có identity provider/backend session thật, RBAC endpoint-level hoặc API contract đã xác nhận.
+- `sale_keyboard_server` không có trong workspace hiện tại.
+
+Không deploy production trước khi hoàn thành auth/RBAC, thay toàn bộ mock và đạt quality gate trong plan.
+
+## Bảo mật
+
+- Không lưu admin token hoặc role trong storage/cookie client-readable.
+- Session demo dùng cookie HttpOnly và được đọc qua `/api/auth/me`.
+- `ADMIN_SESSION_SECRET` bắt buộc tối thiểu 32 byte; không có fallback.
+- Mọi permission phải kiểm tra tại backend.
+- Không commit `.env.local`, secret hoặc dữ liệu production.
+- Refund, khóa user, đổi gói và export phải có reason + audit log.
+
+## Tài liệu
+
+- [Kế hoạch triển khai](./plan-web-management.md)
+- Quy ước project: [AGENTS.md](./AGENTS.md)

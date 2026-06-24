@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+.env*.local
+.git
+.gitignore
+README.md
+Dockerfile
+.agents
+plan-web-management.md
+AUDIT_REPORT.md
+CLAUDE.md
+dokploy_swagger.json
+tsconfig.tsbuildinfo
