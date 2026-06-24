@@ -21,11 +21,12 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
         const user = await authApi.getMe();
         if (user && user.roles && user.roles.length > 0) {
           setRole(user.roles[0]);
-        } else if (user && (user as any).role) {
-          setRole((user as any).role);
+        } else if (user && (user as unknown as Record<string, unknown>).role) {
+          setRole((user as unknown as Record<string, unknown>).role as string);
         }
-      } catch (error: any) {
-        if (error.name !== 'CanceledError') {
+      } catch (error) {
+        const err = error as { name?: string };
+        if (err.name !== 'CanceledError') {
           router.replace('/login');
         }
       }

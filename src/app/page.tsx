@@ -1,18 +1,34 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Users, DollarSign, CreditCard, Activity, ArrowDownRight, Percent, AlertCircle } from 'lucide-react';
+import { Users, DollarSign, CreditCard, Activity, ArrowDownRight, Percent, AlertCircle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import { dashboardApi } from '@/api/dashboard';
+
+interface DashboardSummary {
+  netRevenue?: number;
+  grossRevenue?: number;
+  mrr?: number;
+  refund?: number;
+  activeUsers?: number;
+  trialUsers?: number;
+  activeSubscriptions?: number;
+  arpu?: number;
+}
+
+interface RevenueChartData {
+  name: string;
+  revenue: number;
+}
 
 export default function Dashboard() {
   const [period, setPeriod] = useState('30 ngày qua');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [summaryData, setSummaryData] = useState<any>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
+  const [chartData, setChartData] = useState<RevenueChartData[]>([]);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -24,10 +40,11 @@ export default function Dashboard() {
           dashboardApi.getRevenueTimeseries({ from: '2026-05-25', to: '2026-06-25', interval: 'day' })
         ]);
         
-        setSummaryData(summary.data);
-        setChartData(timeseries.data || []);
-      } catch (err: any) {
-        setError(err.response?.data?.error?.message || 'Không thể tải dữ liệu Dashboard. Vui lòng thử lại.');
+        setSummaryData(summary.data as DashboardSummary);
+        setChartData((timeseries.data as RevenueChartData[]) || []);
+      } catch (err) {
+        const errorResponse = err as { response?: { data?: { error?: { message?: string } } } };
+        setError(errorResponse.response?.data?.error?.message || 'Không thể tải dữ liệu Dashboard. Vui lòng thử lại.');
       } finally {
         setLoading(false);
       }

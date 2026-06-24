@@ -24,8 +24,9 @@ export default function Login() {
       toast.success('Đăng nhập thành công!', { id: toastId });
       router.push('/');
       router.refresh();
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error?.message || error.response?.data?.error || 'Đăng nhập thất bại';
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMsg = err.response?.data?.error?.message || 'Đăng nhập thất bại';
       toast.error(errorMsg, { id: toastId });
     } finally {
       setLoading(false);
