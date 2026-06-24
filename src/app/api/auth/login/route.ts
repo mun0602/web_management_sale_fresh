@@ -22,7 +22,16 @@ function json(
 
 function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
-  return !origin || origin === new URL(request.url).origin;
+  if (!origin) return true;
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(request.url);
+    const forwardedHost = request.headers.get('x-forwarded-host') || requestUrl.host;
+    const requestHostname = forwardedHost.split(':')[0];
+    return originUrl.hostname === requestHostname || originUrl.hostname === requestUrl.hostname;
+  } catch {
+    return false;
+  }
 }
 
 function safeTextEqual(left: string, right: string): boolean {
