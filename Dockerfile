@@ -41,10 +41,8 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 
-# Sao chép các thư viện Prisma và Bcrypt để chạy db push & seed lúc khởi động container
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+# Sao chép toàn bộ thư mục node_modules để đảm bảo Prisma CLI chạy đầy đủ các phụ thuộc (dependencies)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
