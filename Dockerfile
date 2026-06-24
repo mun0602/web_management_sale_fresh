@@ -60,4 +60,4 @@ EXPOSE 3000
 ENV PORT=3000
 
 # Khởi động: chạy db push cập nhật schema, nạp dữ liệu seed nếu chưa có, sau đó start server Next.js
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma && node prisma/seed.js && node server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma && node prisma/seed.cjs && node server.js"]
