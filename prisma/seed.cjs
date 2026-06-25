@@ -6,13 +6,71 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seed...');
 
-  // Kiểm tra xem cơ sở dữ liệu đã có dữ liệu chưa để tránh xóa sạch khi container restart
+  // 1. Định nghĩa dữ liệu các Plan tĩnh với giá mới và hạn mức AI mới
+  const plansData = [
+    {
+      id: 'plan-3-days',
+      name: 'Trial (3 ngày)',
+      price: 50000,
+      appleId: 'com.salekeyboard.trial.3d',
+      googleId: 'com.salekeyboard.trial.3d',
+      features: '1 Thiết bị,ai_limit:20,Quản lý nhóm'
+    },
+    {
+      id: 'plan-1-month',
+      name: 'Pro (1 tháng)',
+      price: 500000,
+      appleId: 'com.salekeyboard.pro.1m',
+      googleId: 'com.salekeyboard.pro.1m',
+      features: '2 Thiết bị,ai_limit:50,Quản lý nhóm'
+    },
+    {
+      id: 'plan-3-months',
+      name: 'Business (3 tháng)',
+      price: 1000000,
+      appleId: 'com.salekeyboard.business.3m',
+      googleId: 'com.salekeyboard.business.3m',
+      features: '3 Thiết bị,ai_limit:100,Quản lý nhóm'
+    },
+    {
+      id: 'plan-6-months',
+      name: 'Enterprise (6 tháng)',
+      price: 1800000,
+      appleId: 'com.salekeyboard.enterprise.6m',
+      googleId: 'com.salekeyboard.enterprise.6m',
+      features: '5 Thiết bị,ai_limit:200,Quản lý nhóm'
+    },
+    {
+      id: 'plan-1-year',
+      name: 'Premium (1 năm)',
+      price: 2900000,
+      appleId: 'com.salekeyboard.premium.1y',
+      googleId: 'com.salekeyboard.premium.1y',
+      features: 'Không giới hạn thiết bị,ai_unlimited,Quản lý nhóm'
+    }
+  ];
+
+  // Kiểm tra xem cơ sở dữ liệu đã có dữ liệu chưa
   const adminCount = await prisma.user.count({
     where: { role: 'SUPER_ADMIN' }
   });
 
   if (adminCount > 0) {
-    console.log('Database already seeded. Skipping seed process.');
+    console.log('Database already seeded. Only updating plans...');
+    for (const plan of plansData) {
+      await prisma.plan.upsert({
+        where: { id: plan.id },
+        update: {
+          name: plan.name,
+          price: plan.price,
+          appleId: plan.appleId,
+          googleId: plan.googleId,
+          features: plan.features
+        },
+        create: plan
+      });
+    }
+    console.log('Plans updated successfully. Skipping other seeds.');
     return;
   }
 
@@ -36,26 +94,14 @@ async function main() {
   });
   console.log('Admin user created:', adminUser.email);
 
-  // 3. Create Plans
-  const plan1Month = await prisma.plan.create({
-    data: {
-      name: 'Pro (1 tháng)',
-      price: 99000,
-      appleId: 'com.salekeyboard.pro.1m',
-      googleId: 'com.salekeyboard.pro.1m',
-      features: '1 Thiết bị,Lọc tin nhắn AI,Không có quản lý nhóm'
-    }
-  });
-
-  const plan1Year = await prisma.plan.create({
-    data: {
-      name: 'Premium (1 năm)',
-      price: 899000,
-      appleId: 'com.salekeyboard.premium.1y',
-      googleId: 'com.salekeyboard.premium.1y',
-      features: '3 Thiết bị,Lọc tin nhắn AI nâng cao,Quản lý nhóm (tối đa 5 nhóm)'
-    }
-  });
+  // 3. Create Plans (sử dụng ID tĩnh)
+  const createdPlans = {};
+  for (const plan of plansData) {
+    const createdPlan = await prisma.plan.create({
+      data: plan
+    });
+    createdPlans[plan.id] = createdPlan;
+  }
   console.log('Plans created');
 
   // 4. Create Users (Khách hàng)
@@ -90,7 +136,7 @@ async function main() {
   await prisma.subscription.create({
     data: {
       userId: createdUsers[0].id,
-      planId: plan1Month.id,
+      planId: createdPlans['plan-1-month'].id,
       status: 'active',
       startDate: new Date('2026-06-01T00:00:00Z'),
       endDate: new Date('2026-07-01T00:00:00Z')
@@ -101,7 +147,7 @@ async function main() {
   await prisma.subscription.create({
     data: {
       userId: createdUsers[1].id,
-      planId: plan1Year.id,
+      planId: createdPlans['plan-1-year'].id,
       status: 'active',
       startDate: new Date('2026-01-01T00:00:00Z'),
       endDate: new Date('2027-01-01T00:00:00Z')
@@ -112,7 +158,7 @@ async function main() {
   await prisma.subscription.create({
     data: {
       userId: createdUsers[2].id,
-      planId: plan1Month.id,
+      planId: createdPlans['plan-1-month'].id,
       status: 'expired',
       startDate: new Date('2026-05-01T00:00:00Z'),
       endDate: new Date('2026-06-01T00:00:00Z')
@@ -122,22 +168,22 @@ async function main() {
 
   // 6. Create Payments & Generate Chart Timeseries
   const paymentsData = [
-    { userId: createdUsers[0].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_APL_111111', date: '2026-06-01T10:00:00Z' },
-    { userId: createdUsers[1].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_GPL_222222', date: '2026-05-25T14:30:00Z' },
-    { userId: createdUsers[2].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_APL_333333', date: '2026-05-01T08:15:00Z' },
+    { userId: createdUsers[0].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_APL_111111', date: '2026-06-01T10:00:00Z' },
+    { userId: createdUsers[1].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_GPL_222222', date: '2026-05-25T14:30:00Z' },
+    { userId: createdUsers[2].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_APL_333333', date: '2026-05-01T08:15:00Z' },
     // Dữ liệu mô phỏng doanh thu 30 ngày qua
-    { userId: createdUsers[3].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_001', date: '2026-05-28T09:00:00Z' },
-    { userId: createdUsers[4].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_002', date: '2026-05-31T11:00:00Z' },
-    { userId: createdUsers[0].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_003', date: '2026-06-03T16:20:00Z' },
-    { userId: createdUsers[1].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_004', date: '2026-06-06T10:10:00Z' },
-    { userId: createdUsers[2].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_005', date: '2026-06-09T15:40:00Z' },
-    { userId: createdUsers[3].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_006', date: '2026-06-12T13:12:00Z' },
-    { userId: createdUsers[4].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_007', date: '2026-06-15T09:05:00Z' },
-    { userId: createdUsers[0].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_008', date: '2026-06-18T14:45:00Z' },
-    { userId: createdUsers[1].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_009', date: '2026-06-21T18:00:00Z' },
-    { userId: createdUsers[2].id, amount: 99000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_010', date: '2026-06-24T11:22:00Z' },
+    { userId: createdUsers[3].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_001', date: '2026-05-28T09:00:00Z' },
+    { userId: createdUsers[4].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_002', date: '2026-05-31T11:00:00Z' },
+    { userId: createdUsers[0].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_003', date: '2026-06-03T16:20:00Z' },
+    { userId: createdUsers[1].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_004', date: '2026-06-06T10:10:00Z' },
+    { userId: createdUsers[2].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'succeeded', transactionId: 'TX_REV_005', date: '2026-06-09T15:40:00Z' },
+    { userId: createdUsers[3].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_006', date: '2026-06-12T13:12:00Z' },
+    { userId: createdUsers[4].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_007', date: '2026-06-15T09:05:00Z' },
+    { userId: createdUsers[0].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_008', date: '2026-06-18T14:45:00Z' },
+    { userId: createdUsers[1].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Google Play', status: 'succeeded', transactionId: 'TX_REV_009', date: '2026-06-21T18:00:00Z' },
+    { userId: createdUsers[2].id, amount: 500000, productName: 'Pro (1 tháng)', platform: 'Apple App Store', status: 'succeeded', transactionId: 'TX_REV_010', date: '2026-06-24T11:22:00Z' },
     // Một số giao dịch Refunded
-    { userId: createdUsers[3].id, amount: 899000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'refunded', transactionId: 'TX_REF_100', date: '2026-06-10T12:00:00Z' }
+    { userId: createdUsers[3].id, amount: 2900000, productName: 'Premium (1 năm)', platform: 'Stripe', status: 'refunded', transactionId: 'TX_REF_100', date: '2026-06-10T12:00:00Z' }
   ];
 
   for (const p of paymentsData) {
