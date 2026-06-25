@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Trash2 } from 'lucide-react';
+import { Package, Plus, Trash2, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { plansApi } from '@/api/plans';
 
