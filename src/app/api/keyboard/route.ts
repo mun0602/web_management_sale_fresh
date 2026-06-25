@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       const url = 'https://api.minimax.io/v1/chat/completions';
       
       const minimaxPayload = {
-        model: 'MiniMax-Text-01',
+        model: 'MiniMax-M3',
         messages: [
           {
             role: 'system',
