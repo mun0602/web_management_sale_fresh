@@ -47,6 +47,31 @@ async function main() {
       appleId: 'com.salekeyboard.premium.1y',
       googleId: 'com.salekeyboard.premium.1y',
       features: 'Không giới hạn thiết bị,ai_unlimited,Quản lý nhóm'
+    },
+    // Các gói mua thêm hạn mức AI (Add-ons)
+    {
+      id: 'addon-100-ai',
+      name: 'Mua thêm 100 lượt AI',
+      price: 29000,
+      appleId: 'com.salekeyboard.addon.100',
+      googleId: 'com.salekeyboard.addon.100',
+      features: 'Gói mua thêm,ai_addon:100,Không giới hạn thời gian'
+    },
+    {
+      id: 'addon-500-ai',
+      name: 'Mua thêm 500 lượt AI',
+      price: 99000,
+      appleId: 'com.salekeyboard.addon.500',
+      googleId: 'com.salekeyboard.addon.500',
+      features: 'Gói mua thêm,ai_addon:500,Không giới hạn thời gian'
+    },
+    {
+      id: 'addon-1200-ai',
+      name: 'Mua thêm 1.200 lượt AI',
+      price: 199000,
+      appleId: 'com.salekeyboard.addon.1200',
+      googleId: 'com.salekeyboard.addon.1200',
+      features: 'Gói mua thêm,ai_addon:1200,Không giới hạn thời gian'
     }
   ];
 

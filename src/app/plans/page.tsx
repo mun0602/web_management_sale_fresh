@@ -102,12 +102,15 @@ export default function PlansPage() {
     }
   };
 
+  const subscriptionPlans = plans.filter((p) => !p.id.startsWith('addon'));
+  const addonPlans = plans.filter((p) => p.id.startsWith('addon'));
+
   return (
     <div className="plans-container">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 style={{ marginBottom: 0 }}>Gói dịch vụ (Plans)</h1>
-          <p>Quản lý các gói thuê bao (Pricing & Duration) thực tế trong hệ thống</p>
+          <p>Quản lý các gói thuê bao chính và gói mua thêm lượt AI thực tế trong hệ thống</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
           <Plus size={18} style={{ marginRight: '0.5rem' }} /> Thêm gói mới
@@ -119,41 +122,96 @@ export default function PlansPage() {
       ) : plans.length === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Không có gói cước nào. Hãy thêm gói mới.</div>
       ) : (
-        <div className="dashboard-grid">
-          {plans.map((p) => {
-            const featureList = p.features ? p.features.split(',') : [];
-            return (
-              <div key={p.id} className="glass-card plan-card" style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
-                  <button 
-                    className="btn btn-outline" 
-                    style={{ padding: '0.25rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} 
-                    title="Xóa" 
-                    onClick={() => handleDeletePlan(p.id, p.name)} 
-                    aria-label="Xóa gói cước"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                <Package size={32} color="var(--primary)" style={{ marginBottom: '1rem' }} />
-                <h3>{p.name}</h3>
-                <div className="price">
-                  {p.price.toLocaleString('vi-VN')} ₫
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  <span>App Store: {p.appleId || '-'}</span>
-                  <span>Google Play: {p.googleId || '-'}</span>
-                </div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
-                  {featureList.map((f, index) => (
-                    <li key={index} style={{ padding: '0.5rem 0', borderBottom: index < featureList.length - 1 ? '1px solid var(--surface-border)' : 'none' }}>
-                      ✓ {f.trim()}
-                    </li>
-                  ))}
-                </ul>
+        <div className="flex flex-col gap-10">
+          {/* Section 1: Gói thuê bao định kỳ */}
+          {subscriptionPlans.length > 0 && (
+            <div>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--primary)', borderBottom: '1px solid var(--surface-border)', paddingBottom: '0.5rem' }}>
+                <Package size={20} /> Gói Thuê Bao Định Kỳ (Subscription Plans)
+              </h2>
+              <div className="dashboard-grid">
+                {subscriptionPlans.map((p) => {
+                  const featureList = p.features ? p.features.split(',') : [];
+                  return (
+                    <div key={p.id} className="glass-card plan-card" style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.25rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                          title="Xóa" 
+                          onClick={() => handleDeletePlan(p.id, p.name)} 
+                          aria-label="Xóa gói cước"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <Package size={32} color="var(--primary)" style={{ marginBottom: '1rem' }} />
+                      <h3>{p.name}</h3>
+                      <div className="price">
+                        {p.price.toLocaleString('vi-VN')} ₫
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <span>App Store: {p.appleId || '-'}</span>
+                        <span>Google Play: {p.googleId || '-'}</span>
+                      </div>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
+                        {featureList.map((f, index) => (
+                          <li key={index} style={{ padding: '0.5rem 0', borderBottom: index < featureList.length - 1 ? '1px solid var(--surface-border)' : 'none' }}>
+                            ✓ {f.trim()}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Section 2: Gói mua thêm lượt AI */}
+          {addonPlans.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--sidebar-ring)', borderBottom: '1px solid var(--surface-border)', paddingBottom: '0.5rem' }}>
+                <Zap size={20} /> Gói Mua Thêm Lượt AI (Add-on AI Quota)
+              </h2>
+              <div className="dashboard-grid">
+                {addonPlans.map((p) => {
+                  const featureList = p.features ? p.features.split(',') : [];
+                  return (
+                    <div key={p.id} className="glass-card plan-card" style={{ position: 'relative', borderLeft: '4px solid var(--sidebar-ring)' }}>
+                      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.25rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                          title="Xóa" 
+                          onClick={() => handleDeletePlan(p.id, p.name)} 
+                          aria-label="Xóa gói cước"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <Zap size={32} color="var(--sidebar-ring)" style={{ marginBottom: '1rem' }} />
+                      <h3>{p.name}</h3>
+                      <div className="price" style={{ color: 'var(--sidebar-ring)' }}>
+                        {p.price.toLocaleString('vi-VN')} ₫
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <span>App Store: {p.appleId || '-'}</span>
+                        <span>Google Play: {p.googleId || '-'}</span>
+                      </div>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-secondary)' }}>
+                        {featureList.map((f, index) => (
+                          <li key={index} style={{ padding: '0.5rem 0', borderBottom: index < featureList.length - 1 ? '1px solid var(--surface-border)' : 'none' }}>
+                            ⚡ {f.trim()}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
