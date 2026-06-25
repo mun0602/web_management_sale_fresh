@@ -91,6 +91,23 @@ export async function GET(request: Request) {
       });
     }
 
+    if (action === 'validate') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: false, message: 'Chưa xác thực' }, { status: 401 });
+      }
+
+      const token = authHeader.substring(7);
+      const payload = verifyToken(token);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
+      }
+
+      return NextResponse.json({
+        success: true
+      });
+    }
+
     return NextResponse.json({ error: 'Hành động không hợp lệ' }, { status: 400 });
   } catch (error: any) {
     console.error('Error in keyboard API GET:', error);
