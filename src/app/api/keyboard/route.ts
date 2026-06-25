@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/token';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import axios from 'axios';
 
 // Dữ liệu mẫu Chủ đề BĐS (Topics)
 const mockTopics = [
@@ -166,12 +167,50 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Yêu cầu prompt rỗng' }, { status: 400 });
       }
 
-      const mockAiOutput = `🏠 [TIN HOT BẤT ĐỘNG SẢN] 🏠\n\n🎯 Dự án bạn quan tâm: "${prompt}"\n\n✨ Đặc điểm nổi bật:\n- Vị trí đắc địa, kết nối giao thông thuận tiện.\n- Pháp lý hoàn chỉnh, sổ hồng riêng trao tay.\n- Khu dân cư an ninh, tiện ích nội ngoại khu đầy đủ.\n- Giá bán cạnh tranh, có thương lượng lộc lá cho khách thiện chí.\n\n📞 Liên hệ ngay để nhận báo giá chi tiết và lịch hẹn xem nhà thực tế!`;
+      // Call Minimax API directly
+      const apiKey = process.env.MINIMAX_API_KEY || 'sk-cp-K6yywGzXrs_xhqk2qud9bvbF4jtFYkXAUTiwyg1HWj1YocE4pf08yH3E1w_DZaEMqPO5icKE4EfqFqZZWra6SXH5UB0Tkak7AuFwEjRyMdVa725oWdpEYSM';
+      const url = 'https://api.minimaxi.com/v1/chat/completions';
+      
+      const minimaxPayload = {
+        model: 'MiniMax-Text-01',
+        messages: [
+          {
+            role: 'system',
+            content: 'Bạn là chuyên gia marketing bất động sản. Hãy viết bài quảng cáo hấp dẫn, chuyên nghiệp dựa trên thông tin được cung cấp.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      };
 
-      return NextResponse.json({
-        success: true,
-        content: mockAiOutput
-      });
+      try {
+        const response = await axios.post(url, minimaxPayload, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        let aiOutput = response.data.choices[0].message.content;
+        
+        // Strip out <think> tags if any
+        aiOutput = aiOutput.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
+
+        return NextResponse.json({
+          success: true,
+          content: aiOutput
+        });
+      } catch (aiError: any) {
+        console.error('Minimax API Error:', aiError.response?.data || aiError.message);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Lỗi khi gọi Minimax API: ' + (aiError.response?.data?.base_resp?.status_msg || aiError.message)
+        }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ error: 'Hành động không hợp lệ' }, { status: 400 });
