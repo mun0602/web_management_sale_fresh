@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 
       // Call Minimax API directly
       const apiKey = process.env.MINIMAX_API_KEY || 'sk-cp-K6yywGzXrs_xhqk2qud9bvbF4jtFYkXAUTiwyg1HWj1YocE4pf08yH3E1w_DZaEMqPO5icKE4EfqFqZZWra6SXH5UB0Tkak7AuFwEjRyMdVa725oWdpEYSM';
-      const url = 'https://api.minimaxi.com/v1/chat/completions';
+      const url = 'https://api.minimax.io/v1/chat/completions';
       
       const minimaxPayload = {
         model: 'MiniMax-Text-01',
