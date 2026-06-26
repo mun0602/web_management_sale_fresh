@@ -6,6 +6,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seed...');
 
+  // 0. Tự động thêm cột status vào bảng User nếu chưa có (An toàn cho production, tránh làm mất dữ liệu các bảng Go Backend)
+  try {
+    console.log('Ensuring "status" column exists in "User" table...');
+    await prisma.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT \'active\';');
+    console.log('Database schema: "status" column checked/added successfully.');
+  } catch (sqlError) {
+    console.error('Failed to ensure status column exists:', sqlError);
+  }
+
   // 1. Định nghĩa dữ liệu các Plan tĩnh với giá mới và hạn mức AI mới
   const plansData = [
     {
