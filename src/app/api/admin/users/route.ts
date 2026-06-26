@@ -27,6 +27,9 @@ export async function GET(request: Request) {
       where: whereClause,
       include: {
         subscriptions: {
+          include: {
+            plan: true
+          },
           orderBy: { createdAt: 'desc' },
           take: 1
         }

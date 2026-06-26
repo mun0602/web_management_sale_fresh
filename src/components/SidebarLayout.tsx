@@ -146,25 +146,7 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
         
-        {/* Global Demo Mode Warning Banner */}
-        <div style={{ 
-          background: 'rgba(245, 158, 11, 0.15)', 
-          border: '1px solid var(--warning)', 
-          color: 'var(--warning)', 
-          padding: '0.75rem 1rem', 
-          borderRadius: '8px', 
-          marginBottom: '2rem', 
-          fontSize: '0.875rem', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.5rem',
-          fontWeight: 500
-        }}>
-          <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>⚠</span>
-          <span>
-            <strong>Chế độ mô phỏng (Demo Mode):</strong> Dữ liệu và biểu đồ trên hệ thống hiện tại là giả lập. Các hành động quản trị (như Hoàn tiền, Khóa tài khoản, Thêm Admin, Thay đổi gói cước, Khởi động lại Server, v.v.) chỉ mang tính chất minh họa giao diện và chưa tác động tới dữ liệu thực tế.
-          </span>
-        </div>
+
         
         {children}
       </main>

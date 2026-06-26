@@ -68,20 +68,20 @@ Các điểm trên đã được sửa trong đợt hardening này. Báo cáo hi
 
 ## 3. Kết quả xác minh
 
-| Kiểm tra | Kết quả |
-|---|---|
-| `npm test` | PASS — 4/4 session tests + lint + typecheck |
-| `npm run lint` | PASS — 0 lỗi |
-| `npx tsc --noEmit` | PASS |
-| `npm run build` | PASS — 8 page routes, 3 auth handlers, Proxy |
-| `npm audit --omit=dev` | PASS — 0 vulnerability |
-| Production login khi chưa có backend auth | PASS security — `503`, không cấp cookie |
-| Forged production session | PASS security — `307 /login`, cookie bị xóa |
-| Dev credentials sai | PASS security — `401` |
-| Dev cross-origin login | PASS security — `403` |
-| Dev credentials đúng | PASS — `200`, chỉ cấp `admin_session` HttpOnly |
-| Session hợp lệ gọi `/api/auth/me` | PASS — `200`, DTO `{id, role}` |
-| Session giả truy cập route admin | PASS security — `307 /login`, cookie bị xóa |
+| Kiểm tra                                  | Kết quả                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `npm test`                                | PASS — 4/4 session tests + lint + typecheck    |
+| `npm run lint`                            | PASS — 0 lỗi                                   |
+| `npx tsc --noEmit`                        | PASS                                           |
+| `npm run build`                           | PASS — 8 page routes, 3 auth handlers, Proxy   |
+| `npm audit --omit=dev`                    | PASS — 0 vulnerability                         |
+| Production login khi chưa có backend auth | PASS security — `503`, không cấp cookie        |
+| Forged production session                 | PASS security — `307 /login`, cookie bị xóa    |
+| Dev credentials sai                       | PASS security — `401`                          |
+| Dev cross-origin login                    | PASS security — `403`                          |
+| Dev credentials đúng                      | PASS — `200`, chỉ cấp `admin_session` HttpOnly |
+| Session hợp lệ gọi `/api/auth/me`         | PASS — `200`, DTO `{id, role}`                 |
+| Session giả truy cập route admin          | PASS security — `307 /login`, cookie bị xóa    |
 
 ## 4. Finding còn lại
 
@@ -117,11 +117,11 @@ Phù hợp cho local demo, không phù hợp staging dùng chung hoặc producti
 
 ## 5. Trạng thái theo môi trường
 
-| Môi trường | Trạng thái |
-|---|---|
-| Local demo có `.env.local` riêng | **Đạt có điều kiện** |
-| Shared development/staging | **Chưa đạt** — cần identity backend và rate limit |
-| Production | **Không hoạt động theo thiết kế fail-closed; chưa sẵn sàng** |
+| Môi trường                       | Trạng thái                                                   |
+| -------------------------------- | ------------------------------------------------------------ |
+| Local demo có `.env.local` riêng | **Đạt có điều kiện**                                         |
+| Shared development/staging       | **Chưa đạt** — cần identity backend và rate limit            |
+| Production                       | **Không hoạt động theo thiết kế fail-closed; chưa sẵn sàng** |
 
 ## 6. Bước tiếp theo bắt buộc cho production
 
@@ -130,4 +130,3 @@ Phù hợp cho local demo, không phù hợp staging dùng chung hoặc producti
 3. Thêm MFA, rotation/revocation, rate limit, failed-login audit và monitoring.
 4. Thay toàn bộ dữ liệu mock, filter/export/mutation bằng API contract thật.
 5. Bổ sung integration/E2E security tests và CI bắt buộc.
-
