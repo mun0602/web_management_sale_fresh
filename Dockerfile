@@ -38,7 +38,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+RUN mkdir -p public/downloads/apk && chown -R nextjs:nodejs public
 COPY --from=builder /app/prisma ./prisma
 
 # Sao chép toàn bộ thư mục node_modules để đảm bảo Prisma CLI chạy đầy đủ các phụ thuộc (dependencies)
