@@ -24,7 +24,8 @@ async function callAI(prompt: string): Promise<string> {
       }
     ],
     temperature: 0.1,
-    max_tokens: 1500
+    max_tokens: 1500,
+    stream: false
   };
 
   const response = await axios.post(apiURL, payload, {
@@ -76,7 +77,11 @@ Chỉ trả về chuỗi JSON thô, không bao quanh bằng dấu nháy ngược
     
     // Clean up markdown block formatting if present
     aiText = aiText.trim();
+    // Remove <think>...</think> tags from MiniMax-M3 reasoning
+    aiText = aiText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
     aiText = aiText.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+
+    console.log('[extract] AI response (first 500 chars):', aiText.substring(0, 500));
 
     const data = JSON.parse(aiText);
 
@@ -85,6 +90,7 @@ Chỉ trả về chuỗi JSON thô, không bao quanh bằng dấu nháy ngược
       data
     });
   } catch (err: any) {
+    console.error('[extract] Error:', err.message, err.response?.data || '');
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

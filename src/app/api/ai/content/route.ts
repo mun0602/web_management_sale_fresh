@@ -98,7 +98,8 @@ async function callAI(prompt: string): Promise<string> {
       }
     ],
     temperature: 0.7,
-    max_tokens: 1000
+    max_tokens: 1000,
+    stream: false
   };
 
   const response = await axios.post(apiURL, minimaxPayload, {
