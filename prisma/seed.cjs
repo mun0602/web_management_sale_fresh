@@ -98,6 +98,38 @@ async function main() {
     where: { role: 'SUPER_ADMIN' }
   });
 
+  const adminPasswordHash = await bcrypt.hash('Chinhniem@0602', 10);
+
+  // Cập nhật hoặc tạo mới admin SUPER_ADMIN
+  const existingAdmin = await prisma.user.findFirst({
+    where: { role: 'SUPER_ADMIN' }
+  });
+
+  if (existingAdmin) {
+    console.log('Updating existing admin user credentials...');
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: {
+        email: 'mun',
+        password: adminPasswordHash,
+        name: 'mun'
+      }
+    });
+    console.log('Admin user updated to email: mun');
+  } else {
+    console.log('Creating new admin user...');
+    await prisma.user.create({
+      data: {
+        email: 'mun',
+        password: adminPasswordHash,
+        role: 'SUPER_ADMIN',
+        name: 'mun',
+        phone: '0901234567'
+      }
+    });
+    console.log('Admin user created with email: mun');
+  }
+
   if (adminCount > 0) {
     console.log('Database already seeded. Only updating plans...');
     for (const plan of plansData) {
@@ -125,17 +157,8 @@ async function main() {
   await prisma.user.deleteMany({});
 
   // 2. Create Admin user
-  const adminPasswordHash = await bcrypt.hash('password123', 10);
-  const adminUser = await prisma.user.create({
-    data: {
-      email: 'admin@example.com',
-      password: adminPasswordHash,
-      role: 'SUPER_ADMIN',
-      name: 'Super Admin',
-      phone: '0901234567'
-    }
-  });
-  console.log('Admin user created:', adminUser.email);
+  // (Đã được tạo/cập nhật ở phía trên)
+  console.log('Admin user verified');
 
   // 3. Create Plans (sử dụng ID tĩnh)
   const createdPlans = {};

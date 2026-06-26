@@ -49,8 +49,8 @@ export default function Login() {
               <Mail size={18} color="var(--text-secondary)" />
               <input 
                 id="email-input"
-                type="email" 
-                placeholder="Email quản trị viên" 
+                type="text" 
+                placeholder="Tài khoản quản trị viên" 
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
