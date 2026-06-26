@@ -11,12 +11,33 @@ export async function GET() {
 
 // Extract JSON object from any AI response - handles <think> tags, markdown blocks, etc.
 function extractJSON(text: string): string {
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+  // Skip past </think> tag if present
+  let searchStart = 0;
+  const thinkEnd = text.indexOf('</think>');
+  if (thinkEnd !== -1) {
+    searchStart = thinkEnd + 8; // length of '</think>'
+  }
+  
+  const firstBrace = text.indexOf('{', searchStart);
+  if (firstBrace === -1) {
     throw new Error(`No JSON object found in AI response: ${text.substring(0, 150)}`);
   }
-  return text.substring(firstBrace, lastBrace + 1);
+  
+  // Use brace counting to find matching closing brace
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = firstBrace; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    if (ch === '}') { depth--; if (depth === 0) return text.substring(firstBrace, i + 1); }
+  }
+  
+  throw new Error(`Unbalanced braces in AI response: ${text.substring(firstBrace, firstBrace + 100)}`);
 }
 
 async function callAI(prompt: string): Promise<string> {
