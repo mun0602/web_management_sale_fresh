@@ -80,3 +80,131 @@ model ApkRelease {
   uploader     String   @default("unknown")
   createdAt    DateTime @default(now())
 }
+
+model Property {
+  id                   String               @id @db.VarChar(255)
+  ownerUserId          String               @map("owner_user_id") @db.VarChar(255)
+  propertyCode         String               @map("property_code") @db.VarChar(50)
+  title                String               @db.VarChar(255)
+  description          String               @db.Text
+  addressText          String?              @map("address_text") @db.Text
+  province             String?              @db.VarChar(100)
+  district             String?              @db.VarChar(100)
+  ward                 String?              @db.VarChar(100)
+  propertyType         String?              @map("property_type") @db.VarChar(100)
+  priceAmount          BigInt               @map("price_amount")
+  priceLabel           String?              @map("price_label") @db.VarChar(100)
+  areaM2               Float?               @map("area_m2") @db.Real
+  bedrooms             Int?
+  bathrooms            Int?
+  legalStatus          String?              @map("legal_status") @db.VarChar(100)
+  saleStatus           String               @map("sale_status") @db.VarChar(100)
+  searchTextNormalized String               @map("search_text_normalized") @db.Text
+  isPinned             Int                  @default(0) @map("is_pinned")
+  sortOrder            Int                  @default(0) @map("sort_order")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt            DateTime?            @map("deleted_at") @db.Timestamp(6)
+  
+  media                PropertyMedia[]
+  groupMembers         PropertyGroupMember[]
+  contentDrafts        ContentDraft[]
+
+  @@unique([ownerUserId, propertyCode])
+  @@map("properties")
+}
+
+model PropertyMedia {
+  id           String   @id @db.VarChar(255)
+  propertyId   String   @map("property_id") @db.VarChar(255)
+  type         String   @db.VarChar(50)
+  url          String   @db.Text
+  thumbnailUrl String?  @map("thumbnail_url") @db.Text
+  caption      String?  @db.Text
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  fileSize     Int      @map("file_size")
+  width        Int?
+  height       Int?
+  isCover      Int      @default(0) @map("is_cover")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  property     Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_media")
+}
+
+model PropertyGroup {
+  id          String                @id @db.VarChar(255)
+  ownerUserId String                @map("owner_user_id") @db.VarChar(255)
+  name        String                @db.VarChar(255)
+  groupType   String                @map("group_type") @db.VarChar(50)
+  filterJson  String?               @map("filter_json") @db.Text
+  sortOrder   Int                   @default(0) @map("sort_order")
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  members     PropertyGroupMember[]
+
+  @@map("property_groups")
+}
+
+model PropertyGroupMember {
+  propertyId String        @map("property_id") @db.VarChar(255)
+  groupId    String        @map("group_id") @db.VarChar(255)
+
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  group      PropertyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, groupId])
+  @@map("property_group_members")
+}
+
+model ContentProfile {
+  id              String                 @id @db.VarChar(255)
+  ownerUserId     String                 @map("owner_user_id") @db.VarChar(255)
+  name            String                 @db.VarChar(255)
+  relationship    String?                @default("Em - Anh/Chị") @db.VarChar(100)
+  length          String?                @default("trung bình") @db.VarChar(100)
+  emojiLevel      String?                @default("vừa phải") @map("emoji_level") @db.VarChar(100)
+  defaultCta      String?                @map("default_cta") @db.Text
+  defaultHashtags String?                @map("default_hashtags") @db.Text
+  forbiddenWords  String?                @map("forbidden_words") @db.Text
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  samples         ContentProfileSample[]
+  drafts          ContentDraft[]
+
+  @@map("content_profiles")
+}
+
+model ContentProfileSample {
+  id         String         @id @db.VarChar(255)
+  profileId  String         @map("profile_id") @db.VarChar(255)
+  sampleText String         @map("sample_text") @db.Text
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+
+  profile    ContentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("content_profile_samples")
+}
+
+model ContentDraft {
+  id             String         @id @db.VarChar(255)
+  ownerUserId    String         @map("owner_user_id") @db.VarChar(255)
+  propertyId     String         @map("property_id") @db.VarChar(255)
+  profileId      String         @map("profile_id") @db.VarChar(255)
+  channel        String         @db.VarChar(100)
+  purpose        String         @db.VarChar(100)
+  promptMetadata String?        @map("prompt_metadata") @db.Text
+  outputText     String         @map("output_text") @db.Text
+  status         String?        @default("draft") @db.VarChar(50)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+
+  property       Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  profile        ContentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("content_drafts")
+}
+

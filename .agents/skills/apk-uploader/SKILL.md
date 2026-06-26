@@ -82,6 +82,8 @@ curl -X POST \
 ### 4. Tải xuống APK (`GET /api/apk/download/[id]`)
 - **Mô tả**: Tải về tệp tin APK nhị phân tương ứng với `id`.
 - **Bảo mật**: Public (người dùng và ứng dụng Android tự tải trực tiếp).
+- **Hỗ trợ Tải bản mới nhất**: Để tải về phiên bản mới nhất mà không cần truyền ID cụ thể, hãy truyền tham số `id` là `latest`. Ví dụ:
+  `GET /api/apk/download/latest`
 - **Response**: Trả về trực tiếp luồng nhị phân với Header:
   - `Content-Type: application/vnd.android.package-archive`
   - `Content-Disposition: attachment; filename="sale_keyboard_xxx.apk"`

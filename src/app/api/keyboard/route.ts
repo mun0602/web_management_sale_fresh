@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { signToken, verifyToken } from '@/lib/auth/token';
+import { signKeyboardToken, verifyKeyboardToken } from '@/lib/auth/keyboard-token';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import axios from 'axios';
+import redis from '@/lib/redis';
 import { isRateLimited, getRateLimitResetSeconds } from '@/lib/rate-limit';
 
 // Dữ liệu mẫu Chủ đề BĐS (Topics)
@@ -13,7 +14,7 @@ const mockTopics = [
   { id: 'topic-script-sale', name: 'Kịch bản chào khách', description: 'Kịch bản tin nhắn Zalo/SMS tiếp cận khách hàng' }
 ];
 
-// Dữ liệu mẫu Câu BĐS (Phrases - Chỉ dùng tiếng Việt)
+// Dữ liệu mẫu Câu BĐS (Phrases)
 const mockPhrases = [
   {
     id: 'phrase-ch-1',
@@ -73,12 +74,146 @@ const mockPhrases = [
   }
 ];
 
+/**
+ * Kiểm tra hạn mức và cộng lượt dùng AI cho user (Prisma + Redis)
+ */
+async function checkAndIncrAIQuota(userId: string): Promise<{ allowed: boolean; limit: number; current: number }> {
+  // 1. Lấy tất cả các subscriptions còn hạn
+  const subscriptions = await prisma.subscription.findMany({
+    where: {
+      userId: userId,
+      status: 'active',
+      endDate: { gt: new Date() }
+    },
+    include: {
+      plan: true
+    }
+  });
+
+  let limit = 5; // Mặc định 5 lượt/ngày cho gói Free
+  let isUnlimited = false;
+
+  if (subscriptions && subscriptions.length > 0) {
+    let baseLimit = 5;
+    let addonLimit = 0;
+
+    for (const sub of subscriptions) {
+      const features = sub.plan.features || '';
+      if (features.includes('ai_unlimited')) {
+        isUnlimited = true;
+        limit = -1;
+        break;
+      }
+
+      const parts = features.split(',');
+      for (let f of parts) {
+        f = f.trim();
+        if (f.startsWith('ai_limit:')) {
+          const l = parseInt(f.substring('ai_limit:'.length), 10);
+          if (!isNaN(l) && l > baseLimit) {
+            baseLimit = l;
+          }
+        }
+        if (f.startsWith('ai_addon:')) {
+          const a = parseInt(f.substring('ai_addon:'.length), 10);
+          if (!isNaN(a)) {
+            addonLimit += a;
+          }
+        }
+      }
+    }
+
+    if (!isUnlimited) {
+      limit = baseLimit + addonLimit;
+    }
+  }
+
+  if (isUnlimited) {
+    return { allowed: true, limit: -1, current: 0 };
+  }
+
+  // 2. Kiểm tra lượt dùng trong ngày trên Redis
+  const today = new Date().toISOString().split('T')[0];
+  const redisKey = `user:ai_quota:${userId}:${today}`;
+
+  const currentStr = await redis.get(redisKey);
+  const current = currentStr ? parseInt(currentStr, 10) : 0;
+
+  if (current >= limit) {
+    return { allowed: false, limit, current };
+  }
+
+  // Tăng lượt dùng và đặt expire 24h
+  const newVal = await redis.incr(redisKey);
+  if (newVal === 1) {
+    await redis.expire(redisKey, 24 * 60 * 60);
+  }
+
+  return { allowed: true, limit, current: newVal };
+}
+
+/**
+ * Gọi API AI
+ */
+async function callAI(prompt: string): Promise<string> {
+  let apiURL = process.env.AI_API_URL || 'https://vps.mun-ai.art/v1';
+  if (!apiURL.endsWith('/chat/completions')) {
+    apiURL = apiURL.endsWith('/') ? `${apiURL}chat/completions` : `${apiURL}/chat/completions`;
+  }
+
+  const apiKey = process.env.AI_API_KEY || 'sk-77056df5cbf6399d-iadki5-d3d0f1f5';
+  const model = process.env.AI_MODEL || 'minimax/MiniMax-M3';
+
+  const minimaxPayload = {
+    model: model,
+    messages: [
+      {
+        role: 'system',
+        content: 'Bạn là chuyên gia marketing bất động sản. Hãy viết bài quảng cáo hấp dẫn, chuyên nghiệp bằng tiếng Việt dựa trên thông tin được cung cấp.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ],
+    temperature: 0.7,
+    max_tokens: 1000
+  };
+
+  const response = await axios.post(apiURL, minimaxPayload, {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    timeout: 120000 // 120s
+  });
+
+  let aiOutput = response.data.choices[0].message.content || '';
+  
+  // Strip out <think> tags if any
+  aiOutput = aiOutput.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
+
+  return aiOutput;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
     if (action === 'topics') {
+      // Xác thực token
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: false, message: 'Chưa xác thực' }, { status: 401 });
+      }
+      const token = authHeader.substring(7);
+      const payload = await verifyKeyboardToken(token);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
+      }
+
+      // Thử lấy hoặc lưu cache Redis như bản cũ (tùy chọn, ở đây trả về mock luôn)
       return NextResponse.json({
         success: true,
         topics: mockTopics
@@ -86,6 +221,17 @@ export async function GET(request: Request) {
     }
 
     if (action === 'phrases') {
+      // Xác thực token
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: false, message: 'Chưa xác thực' }, { status: 401 });
+      }
+      const token = authHeader.substring(7);
+      const payload = await verifyKeyboardToken(token);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
+      }
+
       return NextResponse.json({
         success: true,
         data: mockPhrases
@@ -99,7 +245,7 @@ export async function GET(request: Request) {
       }
 
       const token = authHeader.substring(7);
-      const payload = await verifyToken(token);
+      const payload = await verifyKeyboardToken(token);
       if (!payload) {
         return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
       }
@@ -122,7 +268,7 @@ export async function POST(request: Request) {
     const action = searchParams.get('action');
 
     if (action === 'login') {
-      // L-03: Rate limiting cho keyboard login
+      // Rate limiting chống brute force
       const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
         || request.headers.get('x-real-ip')
         || 'unknown';
@@ -170,7 +316,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác' }, { status: 401 });
       }
 
-      const token = await signToken({ sub: userId, role: role as any });
+      // Tạo Session ID và lưu vào Redis để chống đăng nhập nhiều thiết bị
+      const sid = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      await redis.set(`session:${userId}`, sid, 'EX', 24 * 60 * 60); // 24 giờ
+
+      const token = await signKeyboardToken({ sub: userId, role: role, sid: sid });
 
       return NextResponse.json({
         success: true,
@@ -188,9 +338,18 @@ export async function POST(request: Request) {
       }
 
       const token = authHeader.substring(7);
-      const payload = await verifyToken(token);
+      const payload = await verifyKeyboardToken(token);
       if (!payload) {
-        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn hoặc không hợp lệ' }, { status: 401 });
+      }
+
+      // Kiểm tra và tăng hạn mức AI Quota
+      const quota = await checkAndIncrAIQuota(payload.sub);
+      if (!quota.allowed) {
+        return NextResponse.json({
+          success: false,
+          message: `Bạn đã vượt quá hạn mức sử dụng AI hàng ngày (${quota.limit} lượt/ngày) của gói cước hiện tại. Vui lòng nâng cấp gói cước để tiếp tục sử dụng!`
+        }, { status: 403 });
       }
 
       const body = await request.json();
@@ -200,51 +359,20 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Yêu cầu prompt rỗng' }, { status: 400 });
       }
 
-      // Call Minimax API directly
-      const apiKey = process.env.MINIMAX_API_KEY;
-      if (!apiKey) {
-        return NextResponse.json({ success: false, message: 'MINIMAX_API_KEY chưa được cấu hình' }, { status: 503 });
-      }
-      const url = 'https://api.minimax.io/v1/chat/completions';
-      
-      const minimaxPayload = {
-        model: 'MiniMax-M3',
-        messages: [
-          {
-            role: 'system',
-            content: 'Bạn là chuyên gia marketing bất động sản. Hãy viết bài quảng cáo hấp dẫn, chuyên nghiệp dựa trên thông tin được cung cấp.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      };
-
       try {
-        const response = await axios.post(url, minimaxPayload, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        let aiOutput = response.data.choices[0].message.content;
-        
-        // Strip out <think> tags if any
-        aiOutput = aiOutput.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
+        const aiText = await callAI(prompt);
 
         return NextResponse.json({
           success: true,
-          content: aiOutput
+          content: aiText,
+          ai_limit: quota.limit,
+          ai_usage: quota.current
         });
       } catch (aiError: any) {
-        console.error('Minimax API Error:', aiError.response?.data || aiError.message);
+        console.error('AI Error in keyboard generate-content:', aiError);
         return NextResponse.json({ 
           success: false, 
-          message: 'Lỗi khi gọi Minimax API: ' + (aiError.response?.data?.base_resp?.status_msg || aiError.message)
+          message: 'Lỗi khi gọi AI API: ' + aiError.message
         }, { status: 500 });
       }
     }
