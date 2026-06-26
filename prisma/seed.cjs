@@ -100,34 +100,51 @@ async function main() {
 
   const adminPasswordHash = await bcrypt.hash('Chinhniem@0602', 10);
 
-  // Cập nhật hoặc tạo mới admin SUPER_ADMIN
-  const existingAdmin = await prisma.user.findFirst({
-    where: { role: 'SUPER_ADMIN' }
+  // Cập nhật hoặc tạo mới admin SUPER_ADMIN một cách an toàn để tránh Unique constraint error
+  const adminByEmail = await prisma.user.findUnique({
+    where: { email: 'mun' }
   });
 
-  if (existingAdmin) {
-    console.log('Updating existing admin user credentials...');
+  if (adminByEmail) {
+    console.log('Admin user with email "mun" already exists. Updating credentials...');
     await prisma.user.update({
-      where: { id: existingAdmin.id },
+      where: { id: adminByEmail.id },
       data: {
-        email: 'mun',
         password: adminPasswordHash,
-        name: 'mun'
-      }
-    });
-    console.log('Admin user updated to email: mun');
-  } else {
-    console.log('Creating new admin user...');
-    await prisma.user.create({
-      data: {
-        email: 'mun',
-        password: adminPasswordHash,
-        role: 'SUPER_ADMIN',
         name: 'mun',
-        phone: '0901234567'
+        role: 'SUPER_ADMIN'
       }
     });
-    console.log('Admin user created with email: mun');
+    console.log('Admin user updated successfully.');
+  } else {
+    const oldAdmin = await prisma.user.findFirst({
+      where: { role: 'SUPER_ADMIN' }
+    });
+
+    if (oldAdmin) {
+      console.log('Found old admin user. Updating email to "mun"...');
+      await prisma.user.update({
+        where: { id: oldAdmin.id },
+        data: {
+          email: 'mun',
+          password: adminPasswordHash,
+          name: 'mun'
+        }
+      });
+      console.log('Admin user email updated to: mun');
+    } else {
+      console.log('Creating new admin user with email "mun"...');
+      await prisma.user.create({
+        data: {
+          email: 'mun',
+          password: adminPasswordHash,
+          role: 'SUPER_ADMIN',
+          name: 'mun',
+          phone: '0901234567'
+        }
+      });
+      console.log('Admin user created with email: mun');
+    }
   }
 
   if (adminCount > 0) {
