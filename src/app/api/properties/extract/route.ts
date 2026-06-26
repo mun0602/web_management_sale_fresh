@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-auth';
-import axios from 'axios';
+
+function cleanAIContent(text: string): string {
+  let cleaned = text.trim();
+  // Remove <think>...</think> tags (MiniMax-M3 reasoning)
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  // Remove markdown code blocks
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+  return cleaned;
+}
 
 async function callAI(prompt: string): Promise<string> {
   let apiURL = process.env.AI_API_URL || 'https://vps.mun-ai.art/v1';
@@ -16,7 +24,7 @@ async function callAI(prompt: string): Promise<string> {
     messages: [
       {
         role: 'system',
-        content: 'Bạn là trợ lý AI chuyên viết content quảng cáo, giới thiệu bất động sản bằng tiếng Việt cuốn hút, tối ưu Zalo/Facebook/SMS.'
+        content: 'Bạn là trợ lý AI chuyên phân tích bất động sản. QUAN TRỌNG: Chỉ trả về JSON thô, KHÔNG bao gồm suy luận, thẻ think, hay giải thích.'
       },
       {
         role: 'user',
@@ -28,15 +36,54 @@ async function callAI(prompt: string): Promise<string> {
     stream: false
   };
 
-  const response = await axios.post(apiURL, payload, {
+  console.log('[extract/callAI] Calling:', apiURL, 'model:', model);
+
+  const res = await fetch(apiURL, {
+    method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
-    timeout: 120000
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(120000)
   });
 
-  return response.data.choices[0].message.content || '';
+  const rawText = await res.text();
+  console.log('[extract/callAI] HTTP status:', res.status, 'body length:', rawText.length);
+
+  if (!res.ok) {
+    throw new Error(`AI API error ${res.status}: ${rawText.substring(0, 200)}`);
+  }
+
+  // Parse JSON response  
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    console.error('[extract/callAI] Failed to parse AI API response:', rawText.substring(0, 300));
+    // Fallback: try to extract content from SSE stream format
+    const lines = rawText.split('\n').filter(l => l.startsWith('data: ') && l !== 'data: [DONE]');
+    if (lines.length > 0) {
+      const chunks: string[] = [];
+      for (const line of lines) {
+        try {
+          const obj = JSON.parse(line.substring(6));
+          const delta = obj.choices?.[0]?.delta?.content || obj.choices?.[0]?.message?.content || '';
+          if (delta) chunks.push(delta);
+        } catch { /* skip unparseable chunks */ }
+      }
+      if (chunks.length > 0) {
+        const assembled = chunks.join('');
+        console.log('[extract/callAI] Assembled from SSE, length:', assembled.length);
+        return cleanAIContent(assembled);
+      }
+    }
+    throw new Error(`Cannot parse AI response: ${rawText.substring(0, 100)}`);
+  }
+
+  const content = data.choices?.[0]?.message?.content || '';
+  console.log('[extract/callAI] Content length:', content.length, 'starts with:', content.substring(0, 80));
+  return cleanAIContent(content);
 }
 
 export async function POST(request: Request) {
@@ -53,35 +100,28 @@ export async function POST(request: Request) {
 Tin đăng:
 ${raw_text}
 
-Định dạng JSON cần trả về chính xác như sau (các trường không có thông tin thì để null hoặc chuỗi rỗng phù hợp):
+Định dạng JSON cần trả về chính xác như sau (các trường không có thông tin thì để null hoặc chuỗi rỗng):
 {
-  "property_code": "Mã tin đăng hoặc mã căn (nếu có, ví dụ: ND0670, VH-GP-1202, nếu không có hãy tự tạo mã ngắn gồm 4-6 ký tự chữ và số viết hoa)",
-  "title": "Tiêu đề tin đăng ngắn gọn, hấp dẫn dưới 80 ký tự (Ví dụ: Thuê nhà Đại Mỗ Nam Từ Liêm 41m2 3 tầng)",
-  "description": "Mô tả chi tiết đầy đủ của tin đăng (giữ nguyên các thông tin quan trọng như liên hệ, thanh toán, tiện ích)",
-  "price_amount": 9000000 (Giá trị số VND dạng số nguyên BIGINT. Chú ý: 9 triệu/tháng thì điền 9000000. 9 tỷ thì điền 9000000000. Nếu là tin thuê, điền giá thuê theo tháng. Chỉ điền số nguyên, không điền chữ. Nếu không có giá điền 0),
-  "price_label": "Nhãn giá hiển thị ngắn gọn (Ví dụ: 9 Triệu/tháng, 9 Tỷ, 3.5 Tỷ)",
-  "area_m2": 41.0 (Diện tích m2 dạng số thực FLOAT. Nếu không có điền 0),
-  "bedrooms": 3 (Số phòng ngủ dạng số nguyên INT. Nếu không có điền 0),
-  "bathrooms": 2 (Số phòng tắm/WC dạng số nguyên INT. Nếu không có điền 0),
-  "legal_status": "Tình trạng pháp lý (Ví dụ: Sổ đỏ, Sổ hồng riêng, Hợp đồng mua bán, nếu không có để trống)",
-  "property_type": "Loại bất động sản. Chỉ được chọn một trong các giá trị viết thường sau: 'căn hộ', 'nhà phố', 'đất', 'shophouse', 'khác'",
-  "address_text": "Địa chỉ chi tiết đầy đủ (Ví dụ: 299.X Đại Mỗ, Nam Từ Liêm, Hà Nội)",
-  "province": "Tỉnh/Thành phố (Ví dụ: Hà Nội hoặc Hồ Chí Minh, nếu không rõ dựa vào quận huyện để tự điền tỉnh thành phù hợp)",
-  "district": "Quận/Huyện (Ví dụ: Nam Từ Liêm, Quận 3, Thủ Đức)",
-  "ward": "Phường/Xã (Ví dụ: Đại Mỗ, Thảo Điền, Hiệp Bình Phước)"
+  "property_code": "Mã căn 4-6 ký tự (ví dụ: ND0670)",
+  "title": "Tiêu đề ngắn gọn dưới 80 ký tự",
+  "description": "Mô tả chi tiết đầy đủ",
+  "price_amount": 9000000,
+  "price_label": "9 Triệu/tháng",
+  "area_m2": 41.0,
+  "bedrooms": 3,
+  "bathrooms": 2,
+  "legal_status": "",
+  "property_type": "căn hộ",
+  "address_text": "Địa chỉ đầy đủ",
+  "province": "Hà Nội",
+  "district": "Nam Từ Liêm",
+  "ward": "Đại Mỗ"
 }
 
-Chỉ trả về chuỗi JSON thô, không bao quanh bằng dấu nháy ngược (markdown code block), không kèm lời giải thích nào khác!`;
+CHỈ TRẢ VỀ JSON THÔ. KHÔNG có markdown code block, KHÔNG giải thích, KHÔNG có thẻ think.`;
 
-    let aiText = await callAI(prompt);
-    
-    // Clean up markdown block formatting if present
-    aiText = aiText.trim();
-    // Remove <think>...</think> tags from MiniMax-M3 reasoning
-    aiText = aiText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    aiText = aiText.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-
-    console.log('[extract] AI response (first 500 chars):', aiText.substring(0, 500));
+    const aiText = await callAI(prompt);
+    console.log('[extract] Cleaned text (first 200):', aiText.substring(0, 200));
 
     const data = JSON.parse(aiText);
 
@@ -90,7 +130,7 @@ Chỉ trả về chuỗi JSON thô, không bao quanh bằng dấu nháy ngược
       data
     });
   } catch (err: any) {
-    console.error('[extract] Error:', err.message, err.response?.data || '');
+    console.error('[extract] Error:', err.message);
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
