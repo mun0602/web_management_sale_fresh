@@ -8,34 +8,9 @@ const nextConfig: NextConfig = {
     // Chỉ định root tuyệt đối cho Turbopack là thư mục dự án này để tránh cảnh báo (LOW-01)
     root: path.resolve(__dirname),
   },
-  async rewrites() {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const backendUrl = isDevelopment
-      ? 'http://localhost:8080'
-      : 'https://api-sale-keyboard-103-82-193-14.sslip.io';
-
-    return [
-      {
-        source: '/api/keyboard',
-        destination: `${backendUrl}/api/keyboard`,
-      },
-      {
-        source: '/api/properties/:path*',
-        destination: `${backendUrl}/api/properties/:path*`,
-      },
-      {
-        source: '/api/property-groups/:path*',
-        destination: `${backendUrl}/api/property-groups/:path*`,
-      },
-      {
-        source: '/api/ai/:path*',
-        destination: `${backendUrl}/api/ai/:path*`,
-      },
-      {
-        source: '/uploads/:path*',
-        destination: `${backendUrl}/uploads/:path*`,
-      }
-    ];
+    // All API routes are now handled directly by Next.js App Router
+    // No rewrites needed - old Go backend has been removed
+    return [];
   },
   async headers() {
     const isDevelopment = process.env.NODE_ENV === 'development';
