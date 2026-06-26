@@ -7,6 +7,18 @@ const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
+    // Kiểm tra API Key bảo mật từ headers
+    const apiKey = req.headers.get('x-api-key');
+    const validApiKey = process.env.APK_UPLOAD_API_KEY;
+
+    if (!validApiKey) {
+      return NextResponse.json({ error: 'Server chưa được cấu hình API Key bảo mật' }, { status: 500 });
+    }
+
+    if (apiKey !== validApiKey) {
+      return NextResponse.json({ error: 'Không có quyền truy cập (API Key không hợp lệ)' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('apk') as File | null;
     const versionName = formData.get('version_name') as string || '';
