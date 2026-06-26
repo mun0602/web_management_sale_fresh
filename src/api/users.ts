@@ -17,6 +17,11 @@ export const usersApi = {
     return response.data;
   },
 
+  updateUser: async (id: string, data: Record<string, unknown>) => {
+    const response = await apiClient.patch<ApiResponse<User>>(`/admin/users/${id}`, data);
+    return response.data;
+  },
+
   updateStatus: async (id: string, status: string) => {
     const response = await apiClient.patch<ApiResponse<unknown>>(`/admin/users/${id}/status`, { status });
     return response.data;

@@ -37,6 +37,12 @@ export async function PATCH(
       );
     }
 
+    // Cập nhật trạng thái người dùng trong DB
+    await prisma.user.update({
+      where: { id },
+      data: { status },
+    });
+
     // Ghi Audit Log hành động thay đổi trạng thái
     await prisma.auditLog.create({
       data: {

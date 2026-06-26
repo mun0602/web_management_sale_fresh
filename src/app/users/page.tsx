@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, ShieldAlert, Edit2, Lock, Trash2 } from 'lucide-react';
+import { Search, Filter, ShieldAlert, Edit2, Lock, Trash2, Key, Unlock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/api/users';
 
@@ -11,6 +11,7 @@ interface User {
   role: string;
   name: string | null;
   phone: string | null;
+  status: string;
   createdAt: string;
   subscriptions?: {
     id: string;
@@ -118,17 +119,41 @@ export default function UsersPage() {
     }
   };
 
-  const handleLockUser = async (id: string, email: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn khóa tài khoản "${email}"?`)) {
+  const handleToggleLockUser = async (id: string, email: string, currentStatus: string) => {
+    const isLocked = currentStatus === 'locked';
+    const actionText = isLocked ? 'mở khóa' : 'khóa';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản "${email}"?`)) {
       return;
     }
     try {
-      await usersApi.updateStatus(id, 'locked');
-      toast.success('Đã khóa tài khoản thành công');
+      const newStatus = isLocked ? 'active' : 'locked';
+      await usersApi.updateStatus(id, newStatus);
+      toast.success(`Đã ${actionText} tài khoản thành công`);
       fetchUsers();
     } catch (err: any) {
       console.error(err);
-      const msg = err.response?.data?.error?.message || 'Lỗi khi khóa tài khoản.';
+      const msg = err.response?.data?.error?.message || `Lỗi khi ${actionText} tài khoản.`;
+      toast.error(msg);
+    }
+  };
+
+  const handleChangePassword = async (id: string, email: string) => {
+    const newPassword = prompt(`Nhập mật khẩu mới cho tài khoản "${email}":`);
+    if (newPassword === null) return;
+    if (newPassword.trim() === '') {
+      toast.error('Mật khẩu không được để trống');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Mật khẩu phải có tối thiểu 6 ký tự');
+      return;
+    }
+    try {
+      await usersApi.updateUser(id, { password: newPassword });
+      toast.success('Đổi mật khẩu thành công!');
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.response?.data?.error?.message || 'Lỗi khi đổi mật khẩu.';
       toast.error(msg);
     }
   };
@@ -217,7 +242,12 @@ export default function UsersPage() {
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
+                        {u.status === 'locked' && (
+                          <span className="badge badge-danger" style={{ fontSize: '0.7rem', padding: '0.1rem 0.3rem' }}>LOCKED</span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.email}</div>
                     </td>
                     <td style={{ padding: '1rem' }}>{u.phone || '-'}</td>
@@ -244,7 +274,7 @@ export default function UsersPage() {
                           className="btn btn-outline" 
                           style={{ padding: '0.25rem 0.5rem' }} 
                           onClick={() => handleRevokeSessions(u.id, u.email)} 
-                          title="Revoke Session" 
+                          title="Thu hồi phiên" 
                           aria-label="Thu hồi phiên đăng nhập"
                         >
                           <ShieldAlert size={14} />
@@ -252,11 +282,24 @@ export default function UsersPage() {
                         <button 
                           className="btn btn-outline" 
                           style={{ padding: '0.25rem 0.5rem' }} 
-                          onClick={() => handleLockUser(u.id, u.email)} 
-                          title="Khóa TK" 
-                          aria-label="Khóa tài khoản"
+                          onClick={() => handleChangePassword(u.id, u.email)} 
+                          title="Đổi mật khẩu" 
+                          aria-label="Đổi mật khẩu"
                         >
-                          <Lock size={14} />
+                          <Key size={14} />
+                        </button>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ 
+                            padding: '0.25rem 0.5rem',
+                            color: u.status === 'locked' ? 'var(--warning)' : 'inherit',
+                            borderColor: u.status === 'locked' ? 'var(--warning)' : 'inherit'
+                          }} 
+                          onClick={() => handleToggleLockUser(u.id, u.email, u.status)} 
+                          title={u.status === 'locked' ? "Mở khóa TK" : "Khóa TK"} 
+                          aria-label={u.status === 'locked' ? "Mở khóa tài khoản" : "Khóa tài khoản"}
+                        >
+                          {u.status === 'locked' ? <Unlock size={14} /> : <Lock size={14} />}
                         </button>
                         <button 
                           className="btn btn-outline" 

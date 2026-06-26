@@ -137,6 +137,9 @@ export async function POST(request: Request) {
       let userId = '';
 
       if (user) {
+        if (user.status === 'locked') {
+          return NextResponse.json({ success: false, message: 'Tài khoản của bạn đã bị khóa' }, { status: 403 });
+        }
         authenticated = await bcrypt.compare(password, user.password);
         role = user.role;
         userId = user.id;

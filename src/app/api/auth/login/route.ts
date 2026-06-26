@@ -115,6 +115,9 @@ export async function POST(request: Request) {
     let tokenPayload: { sub: string; role: AdminRole } | null = null;
 
     if (user && ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY'].includes(user.role)) {
+      if (user.status === 'locked') {
+        return json({ error: 'Tài khoản quản trị này đã bị khóa' }, 403);
+      }
       const passwordMatches = await bcrypt.compare(password, user.password);
       if (passwordMatches) {
         tokenPayload = { sub: user.id, role: user.role as AdminRole };
