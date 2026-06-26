@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-auth';
+import { checkAndIncrAIQuota } from '@/lib/ai-quota';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +125,15 @@ export async function POST(request: Request) {
     const { raw_text } = await request.json();
     if (!raw_text) {
       return NextResponse.json({ success: false, message: 'Thiếu nội dung tin đăng thô' }, { status: 400 });
+    }
+
+    // Kiểm tra hạn mức AI trước khi gọi
+    const quota = await checkAndIncrAIQuota(session.sub);
+    if (!quota.allowed) {
+      return NextResponse.json({
+        success: false,
+        message: `Bạn đã vượt quá hạn mức sử dụng AI hàng ngày (${quota.limit} lượt/ngày). Vui lòng nâng cấp gói cước!`
+      }, { status: 403 });
     }
 
     const prompt = `Hãy phân tích tin đăng bất động sản thô sau và trích xuất thông tin thành cấu trúc JSON.

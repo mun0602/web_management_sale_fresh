@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import axios from 'axios';
 import redis from '@/lib/redis';
 import { isRateLimited, getRateLimitResetSeconds } from '@/lib/rate-limit';
+import { checkAndIncrAIQuota } from '@/lib/ai-quota';
 
 // Dữ liệu mẫu Chủ đề BĐS (Topics)
 const mockTopics = [
@@ -73,84 +74,6 @@ const mockPhrases = [
     sortOrder: 2
   }
 ];
-
-/**
- * Kiểm tra hạn mức và cộng lượt dùng AI cho user (Prisma + Redis)
- */
-async function checkAndIncrAIQuota(userId: string): Promise<{ allowed: boolean; limit: number; current: number }> {
-  // 1. Lấy tất cả các subscriptions còn hạn
-  const subscriptions = await prisma.subscription.findMany({
-    where: {
-      userId: userId,
-      status: 'active',
-      endDate: { gt: new Date() }
-    },
-    include: {
-      plan: true
-    }
-  });
-
-  let limit = 5; // Mặc định 5 lượt/ngày cho gói Free
-  let isUnlimited = false;
-
-  if (subscriptions && subscriptions.length > 0) {
-    let baseLimit = 5;
-    let addonLimit = 0;
-
-    for (const sub of subscriptions) {
-      const features = sub.plan.features || '';
-      if (features.includes('ai_unlimited')) {
-        isUnlimited = true;
-        limit = -1;
-        break;
-      }
-
-      const parts = features.split(',');
-      for (let f of parts) {
-        f = f.trim();
-        if (f.startsWith('ai_limit:')) {
-          const l = parseInt(f.substring('ai_limit:'.length), 10);
-          if (!isNaN(l) && l > baseLimit) {
-            baseLimit = l;
-          }
-        }
-        if (f.startsWith('ai_addon:')) {
-          const a = parseInt(f.substring('ai_addon:'.length), 10);
-          if (!isNaN(a)) {
-            addonLimit += a;
-          }
-        }
-      }
-    }
-
-    if (!isUnlimited) {
-      limit = baseLimit + addonLimit;
-    }
-  }
-
-  if (isUnlimited) {
-    return { allowed: true, limit: -1, current: 0 };
-  }
-
-  // 2. Kiểm tra lượt dùng trong ngày trên Redis
-  const today = new Date().toISOString().split('T')[0];
-  const redisKey = `user:ai_quota:${userId}:${today}`;
-
-  const currentStr = await redis.get(redisKey);
-  const current = currentStr ? parseInt(currentStr, 10) : 0;
-
-  if (current >= limit) {
-    return { allowed: false, limit, current };
-  }
-
-  // Tăng lượt dùng và đặt expire 24h
-  const newVal = await redis.incr(redisKey);
-  if (newVal === 1) {
-    await redis.expire(redisKey, 24 * 60 * 60);
-  }
-
-  return { allowed: true, limit, current: newVal };
-}
 
 /**
  * Gọi API AI
