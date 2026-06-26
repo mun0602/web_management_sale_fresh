@@ -151,9 +151,24 @@ export async function POST(request: Request) {
       where: { id: profileId, ownerUserId: session.sub }
     });
 
-    if (!property || !profile) {
-      return NextResponse.json({ success: false, message: 'Không tìm thấy căn hộ hoặc phong cách viết!' }, { status: 404 });
+    if (!profile) {
+      return NextResponse.json({ success: false, message: 'Không tìm thấy phong cách viết!' }, { status: 404 });
     }
+
+    // Nếu property không có trên server (local-only), dùng thông tin từ request body
+    const propData = property || {
+      propertyCode: body.propertyCode || body.property_code || propertyId,
+      title: body.title || 'Căn hộ',
+      description: body.description || '',
+      addressText: body.addressText || body.address_text || '',
+      district: body.district || '',
+      province: body.province || '',
+      priceLabel: body.priceLabel || body.price_label || '',
+      areaM2: body.areaM2 || body.area_m2 || null,
+      bedrooms: body.bedrooms || 0,
+      bathrooms: body.bathrooms || 0,
+      legalStatus: body.legalStatus || body.legal_status || null,
+    };
 
     let xung = 'Em';
     let khach = 'Anh/Chị';
@@ -163,17 +178,17 @@ export async function POST(request: Request) {
       khach = relParts[1];
     }
 
-    const priceLabel = property.priceLabel || '';
-    const area = property.areaM2 ? `${property.areaM2} m²` : 'Chưa cập nhật';
-    const bed = property.bedrooms || 0;
-    const bath = property.bathrooms || 0;
-    const legal = property.legalStatus || 'Sổ hồng lâu dài, pháp lý rõ ràng';
+    const priceLabel = propData.priceLabel || '';
+    const area = propData.areaM2 ? `${propData.areaM2} m²` : 'Chưa cập nhật';
+    const bed = propData.bedrooms || 0;
+    const bath = propData.bathrooms || 0;
+    const legal = propData.legalStatus || 'Sổ hồng lâu dài, pháp lý rõ ràng';
 
     let prompt = `Hãy viết một bài viết giới thiệu bất động sản cực kỳ cuốn hút dựa trên thông tin sau:
-- Mã căn: ${property.propertyCode}
-- Tiêu đề: ${property.title}
-- Mô tả hiện tại: ${property.description}
-- Vị trí: ${property.addressText || ''}, ${property.district || ''}, ${property.province || ''}
+- Mã căn: ${propData.propertyCode}
+- Tiêu đề: ${propData.title}
+- Mô tả hiện tại: ${propData.description}
+- Vị trí: ${propData.addressText || ''}, ${propData.district || ''}, ${propData.province || ''}
 - Giá bán: ${priceLabel}
 - Diện tích: ${area}
 - Thiết kế: ${bed} phòng ngủ, ${bath} phòng tắm
@@ -202,21 +217,25 @@ Yêu cầu phong cách viết bài:
           try {
             const aiText = await callAI(prompt);
             
-            // Save draft
+            // Save draft (bỏ qua lỗi nếu propertyId không tồn tại trên server)
             const draftId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-            await prisma.contentDraft.create({
-              data: {
-                id: draftId,
-                ownerUserId: session.sub,
-                propertyId,
-                profileId,
-                channel,
-                purpose,
-                promptMetadata: JSON.stringify({ channel, purpose, customInstruction }),
-                outputText: aiText,
-                status: 'draft'
-              }
-            });
+            try {
+              await prisma.contentDraft.create({
+                data: {
+                  id: draftId,
+                  ownerUserId: session.sub,
+                  propertyId,
+                  profileId,
+                  channel,
+                  purpose,
+                  promptMetadata: JSON.stringify({ channel, purpose, customInstruction }),
+                  outputText: aiText,
+                  status: 'draft'
+                }
+              });
+            } catch (draftErr) {
+              console.warn('Draft save failed (property may be local-only):', draftErr);
+            }
 
             // Simulate stream in chunks
             const chars = Array.from(aiText);
@@ -249,19 +268,23 @@ Yêu cầu phong cách viết bài:
 
     const aiText = await callAI(prompt);
     const draftId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    await prisma.contentDraft.create({
-      data: {
-        id: draftId,
-        ownerUserId: session.sub,
-        propertyId,
-        profileId,
-        channel,
-        purpose,
-        promptMetadata: JSON.stringify({ channel, purpose, customInstruction }),
-        outputText: aiText,
-        status: 'draft'
-      }
-    });
+    try {
+      await prisma.contentDraft.create({
+        data: {
+          id: draftId,
+          ownerUserId: session.sub,
+          propertyId,
+          profileId,
+          channel,
+          purpose,
+          promptMetadata: JSON.stringify({ channel, purpose, customInstruction }),
+          outputText: aiText,
+          status: 'draft'
+        }
+      });
+    } catch (draftErr) {
+      console.warn('Draft save failed (property may be local-only):', draftErr);
+    }
 
     return NextResponse.json({
       success: true,
