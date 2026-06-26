@@ -10,13 +10,43 @@ export interface SessionPayload {
   exp: number;
 }
 
-const encodedHeader = Buffer.from(
+// Helpers dùng Web APIs thay vì Node.js Buffer để chạy được trong Next.js Edge Runtime (Middleware)
+function stringToBase64Url(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  const binString = String.fromCodePoint(...bytes);
+  return btoa(binString)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+function base64UrlToBytes(base64url: string): Uint8Array {
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4 !== 0) {
+    base64 += '=';
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function base64UrlToString(base64url: string): string {
+  const bytes = base64UrlToBytes(base64url);
+  return new TextDecoder().decode(bytes);
+}
+
+const encodedHeader = stringToBase64Url(
   JSON.stringify({ alg: 'HS256', typ: 'JWT' }),
-).toString('base64url');
+);
 
 function getSessionSecret(): string | null {
   const secret = process.env.ADMIN_SESSION_SECRET;
-  return secret && Buffer.byteLength(secret, 'utf8') >= 32 ? secret : null;
+  if (!secret) return null;
+  const len = new TextEncoder().encode(secret).length;
+  return len >= 32 ? secret : null;
 }
 
 async function createSignature(input: string, secret: string): Promise<ArrayBuffer> {
@@ -82,10 +112,16 @@ export async function signToken(
     iat: now,
     exp: now + SESSION_TTL_SECONDS,
   };
-  const body = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
+  const body = stringToBase64Url(JSON.stringify(fullPayload));
   const input = `${encodedHeader}.${body}`;
   const signatureBuffer = await createSignature(input, secret);
-  const signature = Buffer.from(signatureBuffer).toString('base64url');
+  // Convert ArrayBuffer signature to base64url string
+  const signatureBytes = new Uint8Array(signatureBuffer);
+  const binSignature = String.fromCodePoint(...signatureBytes);
+  const signature = btoa(binSignature)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
   return `${input}.${signature}`;
 }
@@ -104,19 +140,17 @@ export async function verifyToken(
     const [header, body, signature] = parts;
     if (header !== encodedHeader) return null;
 
-    const suppliedSignature = Buffer.from(signature, 'base64url');
+    const suppliedSignature = base64UrlToBytes(signature);
     const expectedSignatureBuffer = await createSignature(`${header}.${body}`, secret);
-    const expectedSignature = Buffer.from(expectedSignatureBuffer);
+    const expectedSignature = new Uint8Array(expectedSignatureBuffer);
     if (
       suppliedSignature.length !== expectedSignature.length ||
-      !timingSafeEqual(new Uint8Array(suppliedSignature), new Uint8Array(expectedSignature))
+      !timingSafeEqual(suppliedSignature, expectedSignature)
     ) {
       return null;
     }
 
-    const parsedPayload: unknown = JSON.parse(
-      Buffer.from(body, 'base64url').toString('utf8'),
-    );
+    const parsedPayload: unknown = JSON.parse(base64UrlToString(body));
     return isValidPayload(parsedPayload, now) ? parsedPayload : null;
   } catch {
     return null;
