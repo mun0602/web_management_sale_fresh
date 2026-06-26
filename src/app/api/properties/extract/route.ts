@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-auth';
 
+export const dynamic = 'force-dynamic';
+
+const BUILD_VERSION = '2026-06-27T01:31-v3-fetch';
+
+export async function GET() {
+  return NextResponse.json({ version: BUILD_VERSION, status: 'ok' });
+}
+
 function cleanAIContent(text: string): string {
   let cleaned = text.trim();
   // Remove <think>...</think> tags (MiniMax-M3 reasoning)
