@@ -3,19 +3,20 @@ import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-aut
 
 export const dynamic = 'force-dynamic';
 
-const BUILD_VERSION = '2026-06-27T01:31-v3-fetch';
+const BUILD_VERSION = '2026-06-27T01:41-v4-indexof';
 
 export async function GET() {
   return NextResponse.json({ version: BUILD_VERSION, status: 'ok' });
 }
 
-function cleanAIContent(text: string): string {
-  let cleaned = text.trim();
-  // Remove <think>...</think> tags (MiniMax-M3 reasoning)
-  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-  // Remove markdown code blocks
-  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-  return cleaned;
+// Extract JSON object from any AI response - handles <think> tags, markdown blocks, etc.
+function extractJSON(text: string): string {
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error(`No JSON object found in AI response: ${text.substring(0, 150)}`);
+  }
+  return text.substring(firstBrace, lastBrace + 1);
 }
 
 async function callAI(prompt: string): Promise<string> {
@@ -83,7 +84,7 @@ async function callAI(prompt: string): Promise<string> {
       if (chunks.length > 0) {
         const assembled = chunks.join('');
         console.log('[extract/callAI] Assembled from SSE, length:', assembled.length);
-        return cleanAIContent(assembled);
+        return assembled;
       }
     }
     throw new Error(`Cannot parse AI response: ${rawText.substring(0, 100)}`);
@@ -91,7 +92,7 @@ async function callAI(prompt: string): Promise<string> {
 
   const content = data.choices?.[0]?.message?.content || '';
   console.log('[extract/callAI] Content length:', content.length, 'starts with:', content.substring(0, 80));
-  return cleanAIContent(content);
+  return content;
 }
 
 export async function POST(request: Request) {
@@ -128,10 +129,13 @@ ${raw_text}
 
 CHỈ TRẢ VỀ JSON THÔ. KHÔNG có markdown code block, KHÔNG giải thích, KHÔNG có thẻ think.`;
 
-    const aiText = await callAI(prompt);
-    console.log('[extract] Cleaned text (first 200):', aiText.substring(0, 200));
-
-    const data = JSON.parse(aiText);
+    const rawAiText = await callAI(prompt);
+    console.log('[extract] Raw AI text (first 300):', rawAiText.substring(0, 300));
+    
+    const jsonText = extractJSON(rawAiText);
+    console.log('[extract] Extracted JSON (first 200):', jsonText.substring(0, 200));
+    
+    const data = JSON.parse(jsonText);
 
     return NextResponse.json({
       success: true,
