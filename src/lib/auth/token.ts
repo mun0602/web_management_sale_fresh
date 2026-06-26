@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-
 export const ADMIN_SESSION_COOKIE = 'admin_session';
 export const SESSION_TTL_SECONDS = 60 * 60;
 
@@ -21,8 +19,30 @@ function getSessionSecret(): string | null {
   return secret && Buffer.byteLength(secret, 'utf8') >= 32 ? secret : null;
 }
 
-function createSignature(input: string, secret: string): Buffer {
-  return createHmac('sha256', secret).update(input).digest();
+async function createSignature(input: string, secret: string): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const cryptoKey = await globalThis.crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  return await globalThis.crypto.subtle.sign(
+    'HMAC',
+    cryptoKey,
+    encoder.encode(input)
+  );
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
 }
 
 function isAdminRole(value: unknown): value is AdminRole {
@@ -48,10 +68,10 @@ function isValidPayload(value: unknown, now: number): value is SessionPayload {
   );
 }
 
-export function signToken(
+export async function signToken(
   payload: Pick<SessionPayload, 'sub' | 'role'>,
   now = Math.floor(Date.now() / 1000),
-): string {
+): Promise<string> {
   const secret = getSessionSecret();
   if (!secret) {
     throw new Error('ADMIN_SESSION_SECRET must contain at least 32 bytes');
@@ -64,15 +84,16 @@ export function signToken(
   };
   const body = Buffer.from(JSON.stringify(fullPayload)).toString('base64url');
   const input = `${encodedHeader}.${body}`;
-  const signature = createSignature(input, secret).toString('base64url');
+  const signatureBuffer = await createSignature(input, secret);
+  const signature = Buffer.from(signatureBuffer).toString('base64url');
 
   return `${input}.${signature}`;
 }
 
-export function verifyToken(
+export async function verifyToken(
   token: string,
   now = Math.floor(Date.now() / 1000),
-): SessionPayload | null {
+): Promise<SessionPayload | null> {
   const secret = getSessionSecret();
   if (!secret || token.length > 4096) return null;
 
@@ -84,10 +105,11 @@ export function verifyToken(
     if (header !== encodedHeader) return null;
 
     const suppliedSignature = Buffer.from(signature, 'base64url');
-    const expectedSignature = createSignature(`${header}.${body}`, secret);
+    const expectedSignatureBuffer = await createSignature(`${header}.${body}`, secret);
+    const expectedSignature = Buffer.from(expectedSignatureBuffer);
     if (
       suppliedSignature.length !== expectedSignature.length ||
-      !timingSafeEqual(suppliedSignature, expectedSignature)
+      !timingSafeEqual(new Uint8Array(suppliedSignature), new Uint8Array(expectedSignature))
     ) {
       return null;
     }

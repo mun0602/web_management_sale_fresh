@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 
     let token: string;
     try {
-      token = signToken(tokenPayload);
+      token = await signToken(tokenPayload);
     } catch {
       return json({ error: 'Session server chưa được cấu hình an toàn' }, 503);
     }

@@ -8,7 +8,7 @@ export async function getSessionAdmin() {
     const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
     if (!token) return null;
 
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload) return null;
 
     // Tìm kiếm trong database

@@ -5,7 +5,7 @@ import { ADMIN_SESSION_COOKIE, verifyToken } from '@/lib/auth/token';
 export async function GET() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
-  const session = token ? verifyToken(token) : null;
+  const session = token ? await verifyToken(token) : null;
 
   if (!session) {
     cookieStore.delete(ADMIN_SESSION_COOKIE);

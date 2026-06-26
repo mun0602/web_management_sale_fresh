@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_SESSION_COOKIE, verifyToken } from './lib/auth/token';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
   const { pathname } = request.nextUrl;
 
   // Xác thực token bằng chữ ký số và kiểm tra thời hạn (exp)
-  const session = token ? verifyToken(token) : null;
+  const session = token ? await verifyToken(token) : null;
   const isAuthenticated = !!session;
 
   const isLoginPage = pathname === '/login';

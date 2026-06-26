@@ -99,7 +99,7 @@ export async function GET(request: Request) {
       }
 
       const token = authHeader.substring(7);
-      const payload = verifyToken(token);
+      const payload = await verifyToken(token);
       if (!payload) {
         return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
       }
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác' }, { status: 401 });
       }
 
-      const token = signToken({ sub: userId, role: role as any });
+      const token = await signToken({ sub: userId, role: role as any });
 
       return NextResponse.json({
         success: true,
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
       }
 
       const token = authHeader.substring(7);
-      const payload = verifyToken(token);
+      const payload = await verifyToken(token);
       if (!payload) {
         return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn' }, { status: 401 });
       }
