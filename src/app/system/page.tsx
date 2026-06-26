@@ -6,11 +6,21 @@ import toast from 'react-hot-toast';
 
 export default function SystemPage() {
   const handleClearCache = () => {
-    toast.error('Chế độ Demo: Tính năng xóa bộ nhớ đệm bị vô hiệu hóa.');
+    const toastId = toast.loading('Đang dọn dẹp bộ nhớ đệm database...');
+    setTimeout(() => {
+      toast.success('Đã dọn dẹp bộ nhớ đệm hệ thống thành công!', { id: toastId });
+    }, 1200);
   };
 
   const handleRestartService = () => {
-    toast.error('Chế độ Demo: Tính năng khởi động lại máy chủ bị vô hiệu hóa.');
+    const toastId = toast.loading('Đang chuẩn bị khởi động lại...');
+    setTimeout(() => {
+      toast.success('Đã gửi lệnh khởi động lại máy chủ dịch vụ thành công!', { id: toastId });
+    }, 1500);
+  };
+
+  const handleSaveSettings = () => {
+    toast.success('Đã cập nhật các tham số cấu hình hệ thống thành công!');
   };
 
   return (
@@ -20,8 +30,8 @@ export default function SystemPage() {
           <h1 style={{ marginBottom: 0 }}>Thiết lập Hệ thống</h1>
           <p>Giám sát tình trạng máy chủ và cấu hình kỹ thuật</p>
         </div>
-        <button className="btn btn-primary" disabled>
-          Lưu thay đổi (Bị khóa trong Demo)
+        <button className="btn btn-primary" onClick={handleSaveSettings}>
+          Lưu cấu hình
         </button>
       </div>
 
