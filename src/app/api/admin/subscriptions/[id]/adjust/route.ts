@@ -26,7 +26,7 @@ export async function POST(
     const body = await request.json();
     const { durationDays } = body;
 
-    if (typeof durationDays !== 'number' || durationDays === 0) {
+    if (typeof durationDays !== 'number' || durationDays <= 0 || !Number.isInteger(durationDays)) {
       return NextResponse.json(
         { error: { message: 'Số ngày điều chỉnh không hợp lệ.' } },
         { status: 400 }

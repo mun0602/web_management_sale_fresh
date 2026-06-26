@@ -9,6 +9,7 @@ import {
 } from '@/lib/auth/token';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { isRateLimited, getRateLimitResetSeconds } from '@/lib/rate-limit';
 
 const MAX_LOGIN_BODY_BYTES = 4096;
 
@@ -74,6 +75,15 @@ function getDemoCredentials(): {
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) {
     return json({ error: 'Nguồn yêu cầu không hợp lệ' }, 403);
+  }
+
+  // L-03: Rate limiting - 10 lần thử / 15 phút / IP
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+  if (isRateLimited(`login:${clientIp}`)) {
+    const retryAfter = getRateLimitResetSeconds(`login:${clientIp}`);
+    return json({ error: `Quá nhiều lần thử. Vui lòng đợi ${retryAfter} giây.` }, 429);
   }
 
   const declaredLength = Number(request.headers.get('content-length') ?? 0);

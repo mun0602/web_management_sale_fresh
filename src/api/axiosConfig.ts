@@ -14,7 +14,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       // Gọi API logout để xóa cookie ở phía máy chủ
       try {
-        await fetch('/auth/logout', { method: 'POST' });
+        await fetch('/api/auth/logout', { method: 'POST' });
       } catch {
         // Bỏ qua lỗi kết nối khi logout
       }

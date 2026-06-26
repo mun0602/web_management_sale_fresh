@@ -4,6 +4,14 @@ import { getSessionAdmin } from '@/lib/auth/session';
 
 export async function GET() {
   try {
+    const admin = await getSessionAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: { message: 'Không được phép. Vui lòng đăng nhập lại.' } },
+        { status: 401 }
+      );
+    }
+
     const plans = await prisma.plan.findMany({
       orderBy: { createdAt: 'desc' },
     });

@@ -17,6 +17,14 @@ export async function getSessionAdmin() {
     });
 
     if (user) {
+      // M-01: Kiểm tra token có bị thu hồi không
+      if (user.sessionRevokedAt) {
+        const tokenIssuedAt = new Date(payload.iat * 1000);
+        if (tokenIssuedAt < user.sessionRevokedAt) {
+          return null; // Token đã bị thu hồi
+        }
+      }
+
       return {
         id: user.id,
         email: user.email,
@@ -25,13 +33,8 @@ export async function getSessionAdmin() {
       };
     }
 
-    // Fallback cho demo auth credentials
-    return {
-      id: payload.sub,
-      email: process.env.DEMO_ADMIN_EMAIL || 'admin@example.com',
-      role: payload.role,
-      name: 'Demo Admin',
-    };
+    // User không tồn tại trong DB → session không hợp lệ
+    return null;
   } catch (error) {
     console.error('Error in getSessionAdmin:', error);
     return null;

@@ -4,7 +4,16 @@ import { ADMIN_SESSION_COOKIE } from '@/lib/auth/token';
 
 function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
-  return !origin || origin === new URL(request.url).origin;
+  if (!origin) return true;
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(request.url);
+    const forwardedHost = request.headers.get('x-forwarded-host') || requestUrl.host;
+    const requestHostname = forwardedHost.split(':')[0];
+    return originUrl.hostname === requestHostname || originUrl.hostname === requestUrl.hostname;
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: Request) {

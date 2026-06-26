@@ -3,6 +3,7 @@ import { signToken, verifyToken } from '@/lib/auth/token';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import axios from 'axios';
+import { isRateLimited, getRateLimitResetSeconds } from '@/lib/rate-limit';
 
 // Dữ liệu mẫu Chủ đề BĐS (Topics)
 const mockTopics = [
@@ -121,6 +122,15 @@ export async function POST(request: Request) {
     const action = searchParams.get('action');
 
     if (action === 'login') {
+      // L-03: Rate limiting cho keyboard login
+      const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || request.headers.get('x-real-ip')
+        || 'unknown';
+      if (isRateLimited(`kb-login:${clientIp}`)) {
+        const retryAfter = getRateLimitResetSeconds(`kb-login:${clientIp}`);
+        return NextResponse.json({ success: false, message: `Quá nhiều lần thử. Vui lòng đợi ${retryAfter} giây.` }, { status: 429 });
+      }
+
       const body = await request.json();
       const { username, password } = body;
 
@@ -143,13 +153,16 @@ export async function POST(request: Request) {
         authenticated = await bcrypt.compare(password, user.password);
         role = user.role;
         userId = user.id;
-      } else {
-        const demoEmail = process.env.DEMO_ADMIN_EMAIL || 'admin@example.com';
-        const demoPassword = process.env.DEMO_ADMIN_PASSWORD || 'password123';
-        if (username === demoEmail && password === demoPassword) {
+      } else if (process.env.ENABLE_DEMO_AUTH === 'true') {
+        const demoEmail = process.env.DEMO_ADMIN_EMAIL;
+        const demoPassword = process.env.DEMO_ADMIN_PASSWORD;
+        const demoRole = process.env.DEMO_ADMIN_ROLE;
+        const demoId = process.env.DEMO_ADMIN_ID;
+        if (demoEmail && demoPassword && demoId && demoRole
+          && username === demoEmail && password === demoPassword) {
           authenticated = true;
-          role = 'SUPER_ADMIN';
-          userId = 'demo-admin-uuid';
+          role = demoRole;
+          userId = demoId;
         }
       }
 
@@ -188,7 +201,10 @@ export async function POST(request: Request) {
       }
 
       // Call Minimax API directly
-      const apiKey = process.env.MINIMAX_API_KEY || 'sk-cp-K6yywGzXrs_xhqk2qud9bvbF4jtFYkXAUTiwyg1HWj1YocE4pf08yH3E1w_DZaEMqPO5icKE4EfqFqZZWra6SXH5UB0Tkak7AuFwEjRyMdVa725oWdpEYSM';
+      const apiKey = process.env.MINIMAX_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json({ success: false, message: 'MINIMAX_API_KEY chưa được cấu hình' }, { status: 503 });
+      }
       const url = 'https://api.minimax.io/v1/chat/completions';
       
       const minimaxPayload = {

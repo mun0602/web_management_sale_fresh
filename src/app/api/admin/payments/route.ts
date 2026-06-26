@@ -4,6 +4,14 @@ import { getSessionAdmin } from '@/lib/auth/session';
 
 export async function GET(request: Request) {
   try {
+    const admin = await getSessionAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: { message: 'Không được phép. Vui lòng đăng nhập lại.' } },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
     const status = searchParams.get('status') || 'all';

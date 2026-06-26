@@ -15,6 +15,15 @@ async function main() {
     console.error('Failed to ensure status column exists:', sqlError);
   }
 
+  // M-01: Tự động thêm cột sessionRevokedAt vào bảng User nếu chưa có
+  try {
+    console.log('Ensuring "sessionRevokedAt" column exists in "User" table...');
+    await prisma.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "sessionRevokedAt" TIMESTAMP;');
+    console.log('Database schema: "sessionRevokedAt" column checked/added successfully.');
+  } catch (sqlError) {
+    console.error('Failed to ensure sessionRevokedAt column exists:', sqlError);
+  }
+
   // 1. Định nghĩa dữ liệu các Plan tĩnh với giá mới và hạn mức AI mới
   const plansData = [
     {

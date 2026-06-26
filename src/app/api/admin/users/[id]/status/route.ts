@@ -26,6 +26,13 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body; // e.g. "locked", "active"
 
+    if (!status || !['active', 'locked'].includes(status)) {
+      return NextResponse.json(
+        { error: { message: 'Trạng thái không hợp lệ. Chỉ chấp nhận: active, locked.' } },
+        { status: 400 }
+      );
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { id },
     });

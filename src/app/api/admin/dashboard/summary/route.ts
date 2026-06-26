@@ -1,16 +1,28 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getSessionAdmin } from '@/lib/auth/session';
 
 export async function GET() {
   try {
-    // 1. Tính toán doanh thu từ bảng Payment thật
-    const payments = await prisma.payment.findMany();
-    const grossRevenue = payments
-      .filter(p => p.status === 'succeeded')
-      .reduce((sum, p) => sum + p.amount, 0);
-    const refund = payments
-      .filter(p => p.status === 'refunded')
-      .reduce((sum, p) => sum + p.amount, 0);
+    const admin = await getSessionAdmin();
+    if (!admin) {
+      return NextResponse.json(
+        { error: { message: 'Không được phép. Vui lòng đăng nhập lại.' } },
+        { status: 401 }
+      );
+    }
+
+    // 1. Tính toán doanh thu từ bảng Payment thật (dùng aggregate thay vì findMany)
+    const grossRevenueResult = await prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { status: 'succeeded' },
+    });
+    const refundResult = await prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { status: 'refunded' },
+    });
+    const grossRevenue = grossRevenueResult._sum.amount || 0;
+    const refund = refundResult._sum.amount || 0;
     const netRevenue = grossRevenue - refund;
 
     // 2. Đếm số lượng thuê bao hoạt động và người dùng hoạt động

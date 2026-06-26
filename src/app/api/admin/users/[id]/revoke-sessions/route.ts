@@ -34,6 +34,13 @@ export async function POST(
       );
     }
 
+    // Thu hồi thật: set sessionRevokedAt → mọi token có iat < timestamp này sẽ bị từ chối
+    const revokedAt = new Date();
+    await prisma.user.update({
+      where: { id },
+      data: { sessionRevokedAt: revokedAt },
+    });
+
     // Ghi Audit Log hành động thu hồi phiên đăng nhập
     await prisma.auditLog.create({
       data: {
