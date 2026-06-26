@@ -42,7 +42,9 @@ export const config = {
      * - _next/static (các tệp tĩnh)
      * - _next/image (tối ưu hóa hình ảnh)
      * - favicon.ico (icon trình duyệt)
+     * - apk (Trang quản lý APK)
+     * - downloads (Thư mục chứa file tĩnh APK)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|apk|downloads).*)',
   ],
 };
