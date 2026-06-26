@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { join } from 'path';
+import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -15,13 +18,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Không tìm thấy file APK' }, { status: 404 });
     }
 
-    // Lấy hostname và protocol thực tế từ headers để redirect chính xác (tránh bị hostname nội bộ của Docker container)
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'munbds.shop';
-    const proto = req.headers.get('x-forwarded-proto') || 'https';
-    const redirectUrl = `${proto}://${host}/downloads/apk/${release.fileName}`;
+    const uploadDir = join(process.cwd(), 'public', 'downloads', 'apk');
+    const filePath = join(uploadDir, release.fileName);
 
-    // Chuyển hướng người dùng đến URL file tĩnh trong thư mục public
-    return NextResponse.redirect(redirectUrl);
+    if (!existsSync(filePath)) {
+      return NextResponse.json({ error: 'Tệp tin không tồn tại trên máy chủ' }, { status: 404 });
+    }
+
+    const fileBuffer = await readFile(filePath);
+
+    return new NextResponse(fileBuffer, {
+      headers: {
+        'Content-Type': 'application/vnd.android.package-archive',
+        'Content-Disposition': `attachment; filename="${release.fileName}"`,
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
