@@ -69,3 +69,14 @@ model AuditLog {
   details   String?
   ip        String?
 }
+
+model ApkRelease {
+  id           String   @id @default(uuid())
+  versionName  String
+  versionCode  Int      @unique
+  fileName     String
+  fileSize     BigInt
+  changelog    String?  @db.Text
+  uploader     String   @default("unknown")
+  createdAt    DateTime @default(now())
+}

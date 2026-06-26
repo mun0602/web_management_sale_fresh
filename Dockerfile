@@ -59,5 +59,5 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# Khởi động: chạy nạp dữ liệu seed nếu chưa có (cập nhật các gói cước mới), sau đó start server Next.js
-CMD ["sh", "-c", "node prisma/seed.cjs && node server.js"]
+# Khởi động: chạy tạo/cập nhật bảng, nạp dữ liệu seed, sau đó start server Next.js
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node prisma/seed.cjs && node server.js"]
