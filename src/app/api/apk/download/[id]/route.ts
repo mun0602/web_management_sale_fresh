@@ -10,9 +10,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     
-    const release = await prisma.apkRelease.findUnique({
-      where: { id }
-    });
+    let release;
+    if (id === 'latest') {
+      release = await prisma.apkRelease.findFirst({
+        orderBy: { versionCode: 'desc' }
+      });
+    } else {
+      release = await prisma.apkRelease.findUnique({
+        where: { id }
+      });
+    }
     
     if (!release) {
       return NextResponse.json({ error: 'Không tìm thấy file APK' }, { status: 404 });
