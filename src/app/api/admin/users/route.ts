@@ -100,10 +100,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Phân quyền tạo tài khoản:
-    // - SUPER_ADMIN: tạo mọi role
-    // - SUPPORT: chỉ tạo USER bàn phím
-    // - Các role khác: không được phép
+    // Chỉ cho phép tạo USER bàn phím từ màn quản lý người dùng.
     if (!['SUPER_ADMIN', 'SUPPORT'].includes(admin.role)) {
       return NextResponse.json(
         { error: { message: 'Bạn không có quyền tạo tài khoản mới.' } },
@@ -112,40 +109,38 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, password, role, name, phone } = body;
+    const { email, password, name, phone } = body;
+    const account = typeof email === 'string' ? email.trim() : '';
 
-    if (!email || !password || !role) {
+    if (!account || !password) {
       return NextResponse.json(
-        { error: { message: 'Thông tin tài khoản không đầy đủ.' } },
+        { error: { message: 'Vui lòng nhập username/tài khoản và mật khẩu.' } },
         { status: 400 }
       );
     }
 
-    const sanitizedRole = role.toUpperCase();
-    const allowedRoles = ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'USER'];
-    if (!allowedRoles.includes(sanitizedRole)) {
+    if (typeof password !== 'string' || password.length < 6) {
       return NextResponse.json(
-        { error: { message: 'Quyền (Role) không hợp lệ.' } },
+        { error: { message: 'Mật khẩu tối thiểu 6 ký tự.' } },
         { status: 400 }
       );
     }
 
-    // SUPPORT chỉ được tạo USER bàn phím, không được tạo admin
-    if (sanitizedRole !== 'USER' && admin.role !== 'SUPER_ADMIN') {
+    if (account.length > 254) {
       return NextResponse.json(
-        { error: { message: 'Chỉ có Super Admin mới có quyền tạo tài khoản quản trị.' } },
-        { status: 403 }
+        { error: { message: 'Username/tài khoản quá dài.' } },
+        { status: 400 }
       );
     }
 
-    // Kiểm tra email trùng lặp
+    // Kiểm tra tài khoản trùng lặp. Field DB vẫn là email để tránh migration.
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: account }
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { error: { message: 'Email này đã tồn tại trên hệ thống.' } },
+        { error: { message: 'Tài khoản này đã tồn tại trên hệ thống.' } },
         { status: 400 }
       );
     }
@@ -155,9 +150,9 @@ export async function POST(request: Request) {
 
     const newUser = await prisma.user.create({
       data: {
-        email,
+        email: account,
         password: passwordHash,
-        role: sanitizedRole,
+        role: 'USER',
         name: name || null,
         phone: phone || null
       }
@@ -171,7 +166,7 @@ export async function POST(request: Request) {
         action: 'CREATE_USER',
         actor: admin.email,
         target: `User #${newUser.id}`,
-        details: `Tạo tài khoản ${sanitizedRole} mới: ${email}`,
+        details: `Tạo tài khoản USER mới: ${account}`,
       }
     });
 
@@ -184,4 +179,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

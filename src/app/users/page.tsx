@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, ShieldAlert, Lock, Trash2, Key, Unlock, Plus, Zap, RotateCcw, CreditCard, UserPlus, Users } from 'lucide-react';
+import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/api/users';
 
@@ -28,10 +28,7 @@ interface User {
   }[];
 }
 
-type Tab = 'keyboard' | 'admin';
-
 export default function UsersPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('keyboard');
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,7 +40,6 @@ export default function UsersPage() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState('USER');
   const [submitting, setSubmitting] = useState(false);
 
   // Modal cấp thêm AI credit
@@ -51,20 +47,12 @@ export default function UsersPage() {
   const [creditTarget, setCreditTarget] = useState<User | null>(null);
   const [creditAmount, setCreditAmount] = useState(10);
 
-  const roleFilter = activeTab === 'keyboard' ? 'user' : 'admin_roles';
-
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { q: searchQuery };
-      if (activeTab === 'keyboard') {
-        params.role = 'user';
-      }
+      const params: Record<string, string> = { q: searchQuery, role: 'user' };
       const response = await usersApi.getUsers(params);
-      let list = (response.data as unknown as User[]) || [];
-      if (activeTab === 'admin') {
-        list = list.filter(u => u.role !== 'USER');
-      }
+      const list = (response.data as unknown as User[]) || [];
       setUsers(list);
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Lỗi khi tải dữ liệu người dùng';
@@ -72,7 +60,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, activeTab]);
+  }, [searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
@@ -93,16 +81,15 @@ export default function UsersPage() {
 
   const resetForm = () => {
     setNewEmail(''); setNewName(''); setNewPhone(''); setNewPassword(''); 
-    setNewRole(activeTab === 'keyboard' ? 'USER' : 'SUPPORT');
   };
 
-  // Tạo người dùng mới (áp dụng cho cả USER bàn phím và Admin)
+  // Tạo tài khoản USER bàn phím.
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await usersApi.createUser({ email: newEmail, name: newName, phone: newPhone, password: newPassword, role: newRole });
-      toast.success(`✅ Đã tạo thành công tài khoản: ${newEmail} (${newRole})`);
+      await usersApi.createUser({ email: newEmail, name: newName, phone: newPhone, password: newPassword });
+      toast.success(`✅ Đã tạo thành công tài khoản: ${newEmail}`);
       setShowUserModal(false);
       resetForm();
       fetchUsers();
@@ -207,9 +194,6 @@ export default function UsersPage() {
     );
   };
 
-  const keyboardUsers = users;
-  const isKeyboard = activeTab === 'keyboard';
-
   return (
     <div style={{ padding: '0' }}>
       {/* Header */}
@@ -224,8 +208,6 @@ export default function UsersPage() {
             className="btn btn-primary" 
             onClick={() => { 
               resetForm(); 
-              // Cập nhật lại role theo tab hiện tại ngay lập tức khi mở modal
-              setNewRole(activeTab === 'keyboard' ? 'USER' : 'SUPPORT');
               setShowUserModal(true); 
             }}
           >
@@ -233,46 +215,6 @@ export default function UsersPage() {
             Thêm User
           </button>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6" style={{ borderBottom: '2px solid var(--surface-border)' }}>
-        <button
-          id="tab-keyboard"
-          onClick={() => setActiveTab('keyboard')}
-          style={{
-            padding: '0.6rem 1.2rem',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            color: isKeyboard ? 'var(--primary)' : 'var(--text-secondary)',
-            borderBottom: isKeyboard ? '2px solid var(--primary)' : '2px solid transparent',
-            marginBottom: -2,
-            display: 'flex', alignItems: 'center', gap: '0.4rem'
-          }}
-        >
-          <Users size={16} /> Thành viên Bàn phím
-        </button>
-        <button
-          id="tab-admin"
-          onClick={() => setActiveTab('admin')}
-          style={{
-            padding: '0.6rem 1.2rem',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            color: !isKeyboard ? 'var(--primary)' : 'var(--text-secondary)',
-            borderBottom: !isKeyboard ? '2px solid var(--primary)' : '2px solid transparent',
-            marginBottom: -2,
-            display: 'flex', alignItems: 'center', gap: '0.4rem'
-          }}
-        >
-          <ShieldAlert size={16} /> Quản trị viên
-        </button>
       </div>
 
       {/* Search */}
@@ -295,22 +237,17 @@ export default function UsersPage() {
           <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Đang tải danh sách...</div>
         ) : users.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            {isKeyboard ? (
-              <div>
-                <UserPlus size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                <div>Chưa có thành viên bàn phím. Nhấn <strong>"Thêm thành viên BĐS"</strong> để tạo.</div>
-              </div>
-            ) : 'Không tìm thấy quản trị viên nào.'}
+            <UserPlus size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+            <div>Chưa có thành viên bàn phím. Nhấn <strong>Thêm User</strong> để tạo.</div>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '1rem' }}>User / Email</th>
+                <th style={{ padding: '1rem' }}>User / Tài khoản</th>
                 <th style={{ padding: '1rem' }}>SĐT</th>
-                <th style={{ padding: '1rem' }}>Role</th>
                 <th style={{ padding: '1rem' }}>Gói hiện tại</th>
-                {isKeyboard && <th style={{ padding: '1rem' }}>AI Credit hôm nay</th>}
+                <th style={{ padding: '1rem' }}>AI Credit hôm nay</th>
                 <th style={{ padding: '1rem' }}>TK</th>
                 <th style={{ padding: '1rem' }}>Thao tác</th>
               </tr>
@@ -331,11 +268,6 @@ export default function UsersPage() {
                     </td>
                     <td style={{ padding: '1rem' }}>{u.phone || '—'}</td>
                     <td style={{ padding: '1rem' }}>
-                      <span className={`badge ${u.role !== 'USER' ? 'badge-primary' : ''}`} style={{ textTransform: 'uppercase' }}>
-                        {u.role === 'USER' ? '🔑 BĐS' : u.role}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem' }}>
                       {latestSub ? (
                         <div>
                           <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{latestSub.plan.name}</div>
@@ -347,11 +279,9 @@ export default function UsersPage() {
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Chưa đăng ký</span>
                       )}
                     </td>
-                    {isKeyboard && (
-                      <td style={{ padding: '1rem' }}>
-                        {renderAiQuota(u)}
-                      </td>
-                    )}
+                    <td style={{ padding: '1rem' }}>
+                      {renderAiQuota(u)}
+                    </td>
                     <td style={{ padding: '1rem' }}>
                       <span className={`badge ${!isLocked ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
                         {isLocked ? 'LOCKED' : 'ACTIVE'}
@@ -359,28 +289,24 @@ export default function UsersPage() {
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                        {isKeyboard && (
-                          <>
-                            <button
-                              className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.5rem', color: 'var(--success)', borderColor: 'var(--success)' }}
-                              onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
-                              title="Cấp thêm AI credit"
-                              aria-label="Cấp thêm AI credit"
-                            >
-                              <Zap size={14} />
-                            </button>
-                            <button
-                              className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.5rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                              onClick={() => handleResetQuota(u)}
-                              title="Reset AI quota"
-                              aria-label="Reset AI quota về 0"
-                            >
-                              <RotateCcw size={14} />
-                            </button>
-                          </>
-                        )}
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: '0.25rem 0.5rem', color: 'var(--success)', borderColor: 'var(--success)' }}
+                          onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
+                          title="Cấp thêm AI credit"
+                          aria-label="Cấp thêm AI credit"
+                        >
+                          <Zap size={14} />
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: '0.25rem 0.5rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
+                          onClick={() => handleResetQuota(u)}
+                          title="Reset AI quota"
+                          aria-label="Reset AI quota về 0"
+                        >
+                          <RotateCcw size={14} />
+                        </button>
                         <button
                           className="btn btn-outline"
                           style={{ padding: '0.25rem 0.5rem' }}
@@ -422,7 +348,7 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Modal tạo Người dùng (Gộp chung) */}
+      {/* Modal tạo tài khoản USER bàn phím */}
       {showUserModal && (
         <div
           role="dialog" aria-modal="true" aria-labelledby="modal-user-title"
@@ -446,9 +372,9 @@ export default function UsersPage() {
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label htmlFor="user-email" style={{ display: 'block', marginBottom: '0.25rem' }}>Email <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="user-email" type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                  placeholder="vd: nguyenvana@gmail.com"
+                <label htmlFor="user-email" style={{ display: 'block', marginBottom: '0.25rem' }}>Username / tài khoản <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input id="user-email" type="text" required value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  placeholder="vd: sale01 hoặc 0901234567"
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
@@ -456,22 +382,9 @@ export default function UsersPage() {
                 <input id="user-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
-              <div>
-                <label htmlFor="user-role" style={{ display: 'block', marginBottom: '0.25rem' }}>Phân quyền / Role</label>
-                <select id="user-role" value={newRole} onChange={e => setNewRole(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
-                  <option value="USER">🔑 USER — Thành viên Bàn phím BĐS</option>
-                  <option value="SUPER_ADMIN">⚙️ SUPER_ADMIN — Toàn quyền quản trị</option>
-                  <option value="SUPPORT">💬 SUPPORT — Hỗ trợ khách hàng</option>
-                  <option value="FINANCE">💳 FINANCE — Quản lý tài chính</option>
-                  <option value="READ_ONLY">👁️ READ_ONLY — Chỉ xem báo cáo</option>
-                </select>
+              <div style={{ padding: '0.75rem', background: 'var(--surface-bg)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--primary)' }}>
+                Tài khoản tạo mới luôn là <strong>USER bàn phím</strong>. Mặc định <strong>5 lượt AI/ngày</strong>, hạn ngạch sẽ tăng lên khi gán gói dịch vụ cho thành viên.
               </div>
-              {newRole === 'USER' && (
-                <div style={{ padding: '0.75rem', background: 'var(--surface-bg)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--primary)' }}>
-                  Mặc định <strong>5 lượt AI/ngày</strong>, hạn ngạch sẽ tăng lên khi gán gói dịch vụ cho thành viên.
-                </div>
-              )}
               <div className="flex justify-end gap-2 mt-2">
                 <button type="button" className="btn btn-outline" onClick={() => setShowUserModal(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
