@@ -157,11 +157,13 @@ export async function POST(request: Request) {
       return json({ error: 'Session server chưa được cấu hình an toàn' }, 503);
     }
 
+    const isHttps = request.url.startsWith('https://') || request.headers.get('x-forwarded-proto') === 'https';
+
     const cookieStore = await cookies();
     cookieStore.set(ADMIN_SESSION_COOKIE, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isHttps,
+      sameSite: 'lax',
       path: '/',
       maxAge: SESSION_TTL_SECONDS,
       priority: 'high',
