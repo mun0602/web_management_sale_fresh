@@ -4,44 +4,21 @@ import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-aut
 import axios from 'axios';
 import { checkAndIncrAIQuota } from '@/lib/ai-quota';
 
-async function callAI(prompt: string): Promise<string> {
-  let apiURL = process.env.AI_API_URL || 'https://vps.mun-ai.art/v1';
-  if (!apiURL.endsWith('/chat/completions')) {
-    apiURL = apiURL.endsWith('/') ? `${apiURL}chat/completions` : `${apiURL}/chat/completions`;
-  }
+async function callGoAI(prompt: string): Promise<string> {
+  const GO_SERVER_URL = process.env.GO_SERVER_URL || 'http://localhost:8080';
+  const url = `${GO_SERVER_URL}/api/ai/generate-content`;
 
-  const apiKey = process.env.AI_API_KEY || 'sk-77056df5cbf6399d-iadki5-d3d0f1f5';
-  const model = process.env.AI_MODEL || 'minimax/MiniMax-M3';
-
-  const minimaxPayload = {
-    model: model,
-    messages: [
-      {
-        role: 'system',
-        content: 'Bạn là chuyên gia marketing bất động sản. Hãy viết bài quảng cáo hấp dẫn, chuyên nghiệp bằng tiếng Việt dựa trên thông tin được cung cấp.'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ],
-    temperature: 0.7,
-    max_tokens: 1000,
-    stream: false
-  };
-
-  const response = await axios.post(apiURL, minimaxPayload, {
+  const response = await axios.post(url, { prompt }, {
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
     },
-    timeout: 120000
+    timeout: 120000 // 120s
   });
 
-  let aiOutput = response.data.choices[0].message.content || '';
-  aiOutput = aiOutput.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
-
-  return aiOutput;
+  if (response.data && response.data.success) {
+    return response.data.content;
+  }
+  throw new Error(response.data?.message || 'Lỗi không xác định từ Go AI service');
 }
 
 export async function POST(request: Request) {
@@ -143,7 +120,7 @@ Yêu cầu phong cách viết bài:
       const customReadable = new ReadableStream({
         async start(controller) {
           try {
-            const aiText = await callAI(prompt);
+            const aiText = await callGoAI(prompt);
             
             // Save draft (bỏ qua lỗi nếu propertyId không tồn tại trên server)
             const draftId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -194,7 +171,7 @@ Yêu cầu phong cách viết bài:
       });
     }
 
-    const aiText = await callAI(prompt);
+    const aiText = await callGoAI(prompt);
     const draftId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     try {
       await prisma.contentDraft.create({

@@ -12,20 +12,8 @@ const nextConfig: NextConfig = {
     const GO_SERVER_URL = process.env.GO_SERVER_URL || 'http://localhost:8080';
     return [
       {
-        source: '/api/properties/extract',
-        destination: `${GO_SERVER_URL}/api/properties/extract`,
-      },
-      {
         source: '/api/ai/:path*',
         destination: `${GO_SERVER_URL}/api/ai/:path*`,
-      },
-      {
-        source: '/api/keyboard/:path*',
-        destination: `${GO_SERVER_URL}/api/keyboard/:path*`,
-      },
-      {
-        source: '/api/keyboard',
-        destination: `${GO_SERVER_URL}/api/keyboard`,
       },
     ];
   },
