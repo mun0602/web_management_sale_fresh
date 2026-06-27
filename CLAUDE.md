@@ -44,3 +44,9 @@ This project is indexed by GitNexus as **web_management_sale** (449 symbols, 855
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+# IMPORTANT PROJECT NOTE (MICROSERVICE ARCHITECTURE)
+This system operates using a Microservice architecture:
+1. **Next.js (`web_management_sale`)**: Serves as the main API Gateway, Dashboard, and core CRUD backend.
+2. **Golang (`sale_keyboard_server`)**: Serves as the dedicated AI worker. Next.js proxies all `/api/ai/*`, `/api/keyboard`, and `/api/properties/extract` requests to this Golang server (port 8080).
+Do not implement heavy AI tasks in Next.js. Always rely on the Golang backend for AI processing.

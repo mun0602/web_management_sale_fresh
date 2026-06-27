@@ -2,6 +2,26 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionAdmin } from '@/lib/auth/session';
 import bcrypt from 'bcryptjs';
+import redis from '@/lib/redis';
+
+/** Tính AI limit của user từ subscription + plan features */
+async function calcAILimit(userId: string): Promise<{ limit: number; isUnlimited: boolean }> {
+  const subs = await prisma.subscription.findMany({
+    where: { userId, status: 'active', endDate: { gt: new Date() } },
+    include: { plan: true }
+  });
+  let base = 5, addon = 0, unlimited = false;
+  for (const s of subs) {
+    const f = s.plan.features || '';
+    if (f.includes('ai_unlimited')) { unlimited = true; break; }
+    for (let p of f.split(',')) {
+      p = p.trim();
+      if (p.startsWith('ai_limit:')) { const v = parseInt(p.slice(9)); if (!isNaN(v) && v > base) base = v; }
+      if (p.startsWith('ai_addon:')) { const v = parseInt(p.slice(9)); if (!isNaN(v)) addon += v; }
+    }
+  }
+  return unlimited ? { limit: -1, isUnlimited: true } : { limit: base + addon, isUnlimited: false };
+}
 
 export async function GET(request: Request) {
   try {
@@ -45,11 +65,21 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Format dữ liệu theo ApiResponse chuẩn
-    const sanitizedUsers = users.map(u => {
+    // Format dữ liệu + AI quota từ Redis cho mỗi user
+    const vnDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+    const sanitizedUsers = await Promise.all(users.map(async (u) => {
       const { password, ...sanitized } = u;
-      return sanitized;
-    });
+      const { limit, isUnlimited } = await calcAILimit(u.id);
+      let aiUsage = 0;
+      if (!isUnlimited) {
+        const raw = await redis.get(`user:ai_quota:${u.id}:${vnDate}`);
+        aiUsage = raw ? parseInt(raw, 10) : 0;
+      }
+      return {
+        ...sanitized,
+        aiQuota: { limit, usage: aiUsage, isUnlimited }
+      };
+    }));
 
     return NextResponse.json({
       data: sanitizedUsers
@@ -70,7 +100,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Chỉ SUPER_ADMIN mới được tạo admin khác, SUPPORT có thể tạo USER thường
+    // Phân quyền tạo tài khoản:
+    // - SUPER_ADMIN: tạo mọi role
+    // - SUPPORT: chỉ tạo USER bàn phím
+    // - Các role khác: không được phép
+    if (!['SUPER_ADMIN', 'SUPPORT'].includes(admin.role)) {
+      return NextResponse.json(
+        { error: { message: 'Bạn không có quyền tạo tài khoản mới.' } },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { email, password, role, name, phone } = body;
 
@@ -90,6 +130,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // SUPPORT chỉ được tạo USER bàn phím, không được tạo admin
     if (sanitizedRole !== 'USER' && admin.role !== 'SUPER_ADMIN') {
       return NextResponse.json(
         { error: { message: 'Chỉ có Super Admin mới có quyền tạo tài khoản quản trị.' } },

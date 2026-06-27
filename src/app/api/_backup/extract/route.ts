@@ -13,24 +13,38 @@ export async function GET() {
 // Extract JSON object from any AI response - handles <think> tags, markdown blocks, etc.
 function extractJSON(text: string): string {
   // Skip past </think> tag if present
-  let searchStart = 0;
+  let cleanText = text;
   const thinkEnd = text.indexOf('</think>');
   if (thinkEnd !== -1) {
-    searchStart = thinkEnd + 8; // length of '</think>'
+    cleanText = text.substring(thinkEnd + 8).trim();
   }
   
-  const firstBrace = text.indexOf('{', searchStart);
+  // 1. Try regex extraction first (fast and robust for standard markdown)
+  const match = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (match) {
+    const extracted = match[1].trim();
+    // Validate if it's parsable
+    try {
+      JSON.parse(extracted);
+      return extracted;
+    } catch (e) {
+      // Fall through to manual parsing below to fix unescaped newlines
+      cleanText = extracted;
+    }
+  }
+
+  // 2. Fallback: manual parsing to handle unescaped newlines and cut-off text
+  const firstBrace = cleanText.indexOf('{');
   if (firstBrace === -1) {
     throw new Error(`No JSON object found in AI response: ${text.substring(0, 150)}`);
   }
   
-  // Use brace counting to find matching closing brace and fix unescaped newlines
   let depth = 0;
   let inString = false;
   let escaped = false;
   let result = '';
-  for (let i = firstBrace; i < text.length; i++) {
-    const ch = text[i];
+  for (let i = firstBrace; i < cleanText.length; i++) {
+    const ch = cleanText[i];
     if (escaped) { escaped = false; result += ch; continue; }
     if (ch === '\\' && inString) { escaped = true; result += ch; continue; }
     if (ch === '"') { inString = !inString; result += ch; continue; }
@@ -44,6 +58,19 @@ function extractJSON(text: string): string {
       if (ch === '{') depth++;
       if (ch === '}') { depth--; if (depth === 0) return result; }
     }
+  }
+  
+  // If we reach here, it might be truncated. Append missing closing braces
+  if (depth > 0) {
+    while (depth > 0) {
+      if (inString) {
+        result += '"';
+        inString = false;
+      }
+      result += '}';
+      depth--;
+    }
+    return result;
   }
   
   throw new Error(`Unbalanced braces in AI response: ${text.substring(firstBrace, firstBrace + 100)}`);

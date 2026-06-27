@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Plus, Ban, CheckCircle } from 'lucide-react';
+import { Search, Plus, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { subscriptionsApi } from '@/api/subscriptions';
 import { plansApi } from '@/api/plans';

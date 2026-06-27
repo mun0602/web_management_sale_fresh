@@ -35,6 +35,33 @@ export const usersApi = {
   deleteUser: async (id: string) => {
     const response = await apiClient.delete<ApiResponse<unknown>>(`/admin/users/${id}`);
     return response.data;
-  }
+  },
+
+  getAiQuota: async (id: string) => {
+    const response = await apiClient.get<ApiResponse<{
+      limit: number;
+      usage: number;
+      remaining: number;
+      isUnlimited: boolean;
+      resetAt?: string;
+    }>>(`/admin/users/${id}/ai-quota`);
+    return response.data;
+  },
+
+  resetAiQuota: async (id: string) => {
+    const response = await apiClient.post<ApiResponse<{ message: string; usage: number }>>(
+      `/admin/users/${id}/ai-quota`,
+      { action: 'reset' }
+    );
+    return response.data;
+  },
+
+  addAiCredit: async (id: string, amount: number) => {
+    const response = await apiClient.post<ApiResponse<{ message: string; usage: number }>>(
+      `/admin/users/${id}/ai-quota`,
+      { action: 'add', amount }
+    );
+    return response.data;
+  },
 };
 

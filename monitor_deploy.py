@@ -6,14 +6,17 @@ api_key = "DdCbtjbnwkPrXovpVzIuOQoqrziDapCpShQmWVeBTWDcnofZqSbRhaSVwNQrxRdm"
 headers = {"x-api-key": api_key}
 
 # 1. Get the latest deployment ID
-url = "http://103.82.193.14:3000/api/application.one?applicationId=6EuIS0o5EfjwZDflndjwI"
+default_app_id = "6EuIS0o5EfjwZDflndjwI"
+application_id = sys.argv[1] if len(sys.argv) > 1 else default_app_id
+
+url = f"http://103.82.193.14:3000/api/application.one?applicationId={application_id}"
 req = urllib.request.Request(url, headers=headers)
 try:
     with urllib.request.urlopen(req) as res:
         data = json.loads(res.read().decode())
         deps = data.get("deployments", [])
         if not deps:
-            print("No deployments found.")
+            print(f"No deployments found for App ID: {application_id}")
             sys.exit(0)
         
         deps.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
