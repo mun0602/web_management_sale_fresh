@@ -28,7 +28,11 @@ return newVal
  * - Dùng Lua script atomic trên Redis để tránh race condition
  * - Sử dụng múi giờ Việt Nam (UTC+7) cho ngày reset
  */
-export async function checkAndIncrAIQuota(userId: string): Promise<AIQuotaResult> {
+export async function checkAndIncrAIQuota(userId: string, role?: string): Promise<AIQuotaResult> {
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+    return { allowed: true, limit: -1, current: 0 };
+  }
+
   // 1. Lấy tất cả subscriptions còn hạn
   const subscriptions = await prisma.subscription.findMany({
     where: {
@@ -41,11 +45,22 @@ export async function checkAndIncrAIQuota(userId: string): Promise<AIQuotaResult
     }
   });
 
-  let limit = 5; // Mặc định 5 lượt/ngày cho Free
+  // Đọc cấu hình limit mặc định từ Redis (nếu có), mặc định 100
+  let defaultLimit = 100;
+  try {
+    const configLimit = await redis.get('global:ai_quota:free_limit');
+    if (configLimit) {
+      defaultLimit = parseInt(configLimit, 10);
+    }
+  } catch (e) {
+    console.warn('Lỗi đọc global config:', e);
+  }
+
+  let limit = defaultLimit; // Mặc định lượt/ngày cho Free
   let isUnlimited = false;
 
   if (subscriptions && subscriptions.length > 0) {
-    let baseLimit = 5;
+    let baseLimit = defaultLimit;
     let addonLimit = 0;
 
     for (const sub of subscriptions) {

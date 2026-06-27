@@ -259,15 +259,15 @@ export default function UsersPage() {
                 const isLocked = u.status === 'locked';
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <td data-label="Tài khoản" style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
                         {isLocked && <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>LOCKED</span>}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.email}</div>
                     </td>
-                    <td style={{ padding: '1rem' }}>{u.phone || '—'}</td>
-                    <td style={{ padding: '1rem' }}>
+                    <td data-label="SĐT" style={{ padding: '1rem' }}>{u.phone || '—'}</td>
+                    <td data-label="Gói hiện tại" style={{ padding: '1rem' }}>
                       {latestSub ? (
                         <div>
                           <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{latestSub.plan.name}</div>
@@ -279,15 +279,15 @@ export default function UsersPage() {
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Chưa đăng ký</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td data-label="AI Credit" style={{ padding: '1rem' }}>
                       {renderAiQuota(u)}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td data-label="Trạng thái" style={{ padding: '1rem' }}>
                       <span className={`badge ${!isLocked ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
                         {isLocked ? 'LOCKED' : 'ACTIVE'}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td data-label="Thao tác" style={{ padding: '1rem' }}>
                       <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                         <button
                           className="btn btn-outline"

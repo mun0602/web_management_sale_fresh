@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, Users, CreditCard, Activity, Package, LogOut, FileText, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, Package, LogOut, FileText, Menu, X, Zap } from 'lucide-react';
 import { authApi } from '@/api/auth';
 
 const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
@@ -103,6 +103,12 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
             <Link href="/payments" onClick={closeSidebar} className={`nav-item ${pathname === '/payments' ? 'active' : ''}`}>
               <Activity size={20} />
               Giao dịch
+            </Link>
+          </li>
+          <li>
+            <Link href="/ai-quota" onClick={closeSidebar} className={`nav-item ${pathname === '/ai-quota' ? 'active' : ''}`}>
+              <Zap size={20} />
+              Quản lý AI
             </Link>
           </li>
           <li>

@@ -534,10 +534,53 @@ tr:hover td {
     min-height: 250px;
   }
   
-  /* Table layout for mobile */
-  table th, table td {
-    padding: 0.75rem 0.5rem !important;
-    font-size: 0.85rem;
+  /* Table layout for mobile -> Card based layout */
+  table, thead, tbody, th, td, tr {
+    display: block;
+    width: 100%;
+  }
+  
+  thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  tr {
+    margin-bottom: 1rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    background: var(--bg-color);
+  }
+  
+  td {
+    border: none !important;
+    border-bottom: 1px solid var(--surface-border) !important;
+    position: relative;
+    padding: 0.75rem 1rem 0.75rem 45% !important;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: right;
+  }
+  
+  td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    width: 40%;
+    text-align: left;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+  }
+  
+  td:last-child {
+    border-bottom: 0 !important;
+    justify-content: flex-end;
   }
   
   /* Fix chart flex basis on mobile */

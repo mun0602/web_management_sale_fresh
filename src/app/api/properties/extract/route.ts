@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Kiểm tra và tăng quota AI
-    const quota = await checkAndIncrAIQuota(session.sub);
+    const quota = await checkAndIncrAIQuota(session.sub, session.role);
     if (!quota.allowed) {
       return NextResponse.json({
         success: false,

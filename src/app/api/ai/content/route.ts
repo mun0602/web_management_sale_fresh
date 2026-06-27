@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const stream = searchParams.get('stream') === 'true';
 
   try {
-    const quota = await checkAndIncrAIQuota(session.sub);
+    const quota = await checkAndIncrAIQuota(session.sub, session.role);
     if (!quota.allowed) {
       return NextResponse.json({
         success: false,

@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn hoặc không hợp lệ' }, { status: 401 });
       }
 
-      const quota = await checkAndIncrAIQuota(payload.sub);
+      const quota = await checkAndIncrAIQuota(payload.sub, payload.role);
       if (!quota.allowed) {
         return NextResponse.json({
           success: false,
