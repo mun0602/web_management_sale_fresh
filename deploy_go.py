@@ -71,7 +71,11 @@ def main():
         "password": "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",
         "branch": "main",
         "repository": "mun0602/sale_keyboard_server",
-        "cleanCache": True
+        "cleanCache": True,
+        "cpuLimit": None,
+        "cpuReservation": None,
+        "memoryLimit": None,
+        "memoryReservation": None
     }
     make_request("application.update", update_payload)
     print("-> Đã cập nhật Git & Dockerfile thành công!")
