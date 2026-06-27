@@ -98,7 +98,7 @@ async function main() {
     where: { role: 'SUPER_ADMIN' }
   });
 
-  const adminPasswordHash = await bcrypt.hash('Chinhniem@0602', 10);
+  const adminPasswordHash = await bcrypt.hash('Mun@Sale2026!BdS', 10);
 
   // Cập nhật hoặc tạo mới admin SUPER_ADMIN một cách an toàn để tránh Unique constraint error
   try {
