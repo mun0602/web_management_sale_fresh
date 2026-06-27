@@ -200,17 +200,27 @@ export default function UsersPage() {
     if (q.isUnlimited) {
       return <span className="badge badge-success">∞ Không giới hạn</span>;
     }
-    const pct = q.limit > 0 ? (q.usage / q.limit) * 100 : 0;
+    const realUsage = q.usage;
+    const displayUsage = Math.max(0, realUsage);
+    const bonus = realUsage < 0 ? Math.abs(realUsage) : 0;
+    const remaining = q.limit - realUsage;
+    
+    const pct = q.limit > 0 ? (displayUsage / q.limit) * 100 : 0;
     const color = pct >= 90 ? 'var(--danger)' : pct >= 70 ? 'var(--warning)' : 'var(--success)';
+    
     return (
-      <div style={{ minWidth: 110 }}>
+      <div style={{ minWidth: 120 }}>
         <div style={{ fontSize: '0.8rem', fontWeight: 600, color }}>
-          {q.usage}/{q.limit} lượt
+          {displayUsage}/{q.limit} lượt
+          {bonus > 0 && <span style={{ color: 'var(--success)', marginLeft: 4 }}>+{bonus}</span>}
         </div>
         <div style={{
           height: 4, borderRadius: 2, background: 'var(--surface-border)', marginTop: 3, overflow: 'hidden'
         }}>
           <div style={{ height: '100%', width: `${Math.min(100, pct)}%`, background: color, borderRadius: 2, transition: 'width 0.3s' }} />
+        </div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          Còn: {remaining}
         </div>
       </div>
     );

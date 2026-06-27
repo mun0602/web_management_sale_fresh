@@ -133,16 +133,12 @@ export async function POST(request: Request, context: RouteContext) {
         return json({ error: { message: 'Số lượt không hợp lệ (1-9999).' } }, 400);
       }
 
-      // Cấp thêm credit = giảm usage đi (nếu usage > 0) hoặc set âm (cho phép dùng thêm)
+      // Cấp thêm credit = giảm usage đi (cho phép rớt xuống số âm để dư quota)
       const usageStr = await redis.get(redisKey);
       const currentUsage = usageStr ? parseInt(usageStr, 10) : 0;
-      const newUsage = Math.max(0, currentUsage - addAmount);
+      const newUsage = currentUsage - addAmount;
       
-      if (newUsage === 0) {
-        await redis.del(redisKey);
-      } else {
-        await redis.set(redisKey, String(newUsage), 'KEEPTTL');
-      }
+      await redis.set(redisKey, String(newUsage), 'KEEPTTL');
 
       await prisma.auditLog.create({
         data: {
