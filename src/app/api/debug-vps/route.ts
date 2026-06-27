@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
+// trigger rebuild
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
