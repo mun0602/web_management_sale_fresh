@@ -3,22 +3,28 @@ import prisma from '@/lib/prisma';
 import { getAuthorizedUser, unauthorizedResponse } from '@/lib/auth/keyboard-auth';
 import axios from 'axios';
 import { checkAndIncrAIQuota } from '@/lib/ai-quota';
+import { generateRealEstateContent } from '@/lib/ai-provider';
 
 async function callGoAI(prompt: string): Promise<string> {
   const GO_SERVER_URL = process.env.GO_SERVER_URL || 'http://localhost:8080';
   const url = `${GO_SERVER_URL}/api/ai/generate-content`;
 
-  const response = await axios.post(url, { prompt }, {
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    timeout: 120000 // 120s
-  });
+  try {
+    const response = await axios.post(url, { prompt }, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 120000 // 120s
+    });
 
-  if (response.data && response.data.success) {
-    return response.data.content;
+    if (response.data && response.data.success) {
+      return response.data.content;
+    }
+    throw new Error(response.data?.message || 'Lỗi không xác định từ Go AI service');
+  } catch (err: any) {
+    console.warn('[AI content] Go AI unavailable, falling back to direct provider:', err.message);
+    return generateRealEstateContent(prompt);
   }
-  throw new Error(response.data?.message || 'Lỗi không xác định từ Go AI service');
 }
 
 export async function POST(request: Request) {
