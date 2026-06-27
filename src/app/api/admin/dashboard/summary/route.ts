@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionAdmin } from '@/lib/auth/session';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const admin = await getSessionAdmin();
     if (!admin) {
@@ -12,36 +12,82 @@ export async function GET() {
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const fromStr = searchParams.get('from');
+    const toStr = searchParams.get('to');
+
+    const fromDate = fromStr ? new Date(fromStr) : undefined;
+    const toDate = toStr ? new Date(toStr) : undefined;
+
+    // Bộ lọc ngày cho Payment (createdAt)
+    const dateFilter = fromDate || toDate ? {
+      createdAt: {
+        ...(fromDate ? { gte: fromDate } : {}),
+        ...(toDate ? { lte: toDate } : {})
+      }
+    } : {};
+
+    // Bộ lọc ngày cho Subscription (khoảng thời gian chồng lấn)
+    const subDateFilter = fromDate || toDate ? {
+      startDate: {
+        ...(toDate ? { lte: toDate } : {})
+      },
+      endDate: {
+        ...(fromDate ? { gte: fromDate } : {})
+      }
+    } : {};
+
+    // Bộ lọc ngày cho User (createdAt)
+    const userDateFilter = fromDate || toDate ? {
+      createdAt: {
+        ...(fromDate ? { gte: fromDate } : {}),
+        ...(toDate ? { lte: toDate } : {})
+      }
+    } : {};
+
     // 1. Tính toán doanh thu từ bảng Payment thật (dùng aggregate thay vì findMany)
     const grossRevenueResult = await prisma.payment.aggregate({
       _sum: { amount: true },
-      where: { status: 'succeeded' },
+      where: { 
+        status: 'succeeded',
+        ...dateFilter
+      },
     });
     const refundResult = await prisma.payment.aggregate({
       _sum: { amount: true },
-      where: { status: 'refunded' },
+      where: { 
+        status: 'refunded',
+        ...dateFilter
+      },
     });
     const grossRevenue = grossRevenueResult._sum.amount || 0;
     const refund = refundResult._sum.amount || 0;
     const netRevenue = grossRevenue - refund;
 
-    // 2. Đếm số lượng thuê bao hoạt động và người dùng hoạt động
+    // 2. Đếm số lượng thuê bao hoạt động và người dùng hoạt động trong khoảng thời gian lọc
     const activeSubsCount = await prisma.subscription.count({
-      where: { status: 'active' }
+      where: { 
+        status: 'active',
+        ...subDateFilter
+      }
     });
 
     const activeUsersCount = await prisma.user.count({
       where: {
         subscriptions: {
-          some: { status: 'active' }
+          some: { 
+            status: 'active',
+            ...subDateFilter
+          }
         }
       }
     });
 
-    // 3. Đếm số người dùng thử (trial) - ví dụ là các USER chưa thực hiện giao dịch nào
+    // 3. Đếm số người dùng thử (trial) đăng ký trong thời gian này và chưa thực hiện giao dịch nào
     const trialUsersCount = await prisma.user.count({
       where: {
         role: 'USER',
+        ...userDateFilter,
         payments: {
           none: {}
         }
@@ -50,7 +96,10 @@ export async function GET() {
 
     // 4. Tính toán MRR thực tế từ các thuê bao đang hoạt động
     const activeSubs = await prisma.subscription.findMany({
-      where: { status: 'active' },
+      where: { 
+        status: 'active',
+        ...subDateFilter
+      },
       include: { plan: true }
     });
 

@@ -22,6 +22,38 @@ interface RevenueChartData {
   revenue: number;
 }
 
+function getPeriodDates(periodStr: string) {
+  const to = new Date();
+  const from = new Date();
+  
+  if (periodStr === '7 ngày qua') {
+    from.setDate(to.getDate() - 7);
+  } else if (periodStr === '30 ngày qua') {
+    from.setDate(to.getDate() - 30);
+  } else if (periodStr === 'Tháng này') {
+    from.setDate(1); // Ngày đầu tiên của tháng này
+  } else if (periodStr === 'Tháng trước') {
+    from.setMonth(to.getMonth() - 1);
+    from.setDate(1); // Ngày đầu tiên của tháng trước
+    
+    // Ngày cuối cùng của tháng trước
+    const lastDayOfLastMonth = new Date(to.getFullYear(), to.getMonth(), 0);
+    to.setTime(lastDayOfLastMonth.getTime());
+  }
+  
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  return {
+    from: formatDate(from),
+    to: formatDate(to)
+  };
+}
+
 export default function Dashboard() {
   const [period, setPeriod] = useState('30 ngày qua');
   const [loading, setLoading] = useState(true);
@@ -35,9 +67,10 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       try {
+        const { from, to } = getPeriodDates(period);
         const [summary, timeseries] = await Promise.all([
-          dashboardApi.getSummary({ from: '2026-05-25', to: '2026-06-25', timezone: 'Asia/Ho_Chi_Minh' }),
-          dashboardApi.getRevenueTimeseries({ from: '2026-05-25', to: '2026-06-25', interval: 'day' })
+          dashboardApi.getSummary({ from, to, timezone: 'Asia/Ho_Chi_Minh' }),
+          dashboardApi.getRevenueTimeseries({ from, to, interval: 'day' })
         ]);
         
         setSummaryData(summary.data as DashboardSummary);
