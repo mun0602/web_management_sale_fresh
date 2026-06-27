@@ -24,18 +24,26 @@ function extractJSON(text: string): string {
     throw new Error(`No JSON object found in AI response: ${text.substring(0, 150)}`);
   }
   
-  // Use brace counting to find matching closing brace
+  // Use brace counting to find matching closing brace and fix unescaped newlines
   let depth = 0;
   let inString = false;
   let escaped = false;
+  let result = '';
   for (let i = firstBrace; i < text.length; i++) {
     const ch = text[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\' && inString) { escaped = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === '{') depth++;
-    if (ch === '}') { depth--; if (depth === 0) return text.substring(firstBrace, i + 1); }
+    if (escaped) { escaped = false; result += ch; continue; }
+    if (ch === '\\' && inString) { escaped = true; result += ch; continue; }
+    if (ch === '"') { inString = !inString; result += ch; continue; }
+    if (inString) {
+      if (ch === '\n') { result += '\\n'; continue; }
+      if (ch === '\r') { result += '\\r'; continue; }
+      if (ch === '\t') { result += '\\t'; continue; }
+    }
+    result += ch;
+    if (!inString) {
+      if (ch === '{') depth++;
+      if (ch === '}') { depth--; if (depth === 0) return result; }
+    }
   }
   
   throw new Error(`Unbalanced braces in AI response: ${text.substring(firstBrace, firstBrace + 100)}`);
@@ -158,7 +166,8 @@ ${raw_text}
   "ward": "Đại Mỗ"
 }
 
-CHỈ TRẢ VỀ JSON THÔ. KHÔNG có markdown code block, KHÔNG giải thích, KHÔNG có thẻ think.`;
+CHỈ TRẢ VỀ JSON THÔ. KHÔNG có markdown code block, KHÔNG giải thích.
+QUAN TRỌNG: KHÔNG DÙNG DẤU XUỐNG DÒNG (ENTER) TRONG CÁC CHUỖI VĂN BẢN (STRING) CỦA JSON. Nếu cần xuống dòng, hãy dùng \\n.`;
 
     const rawAiText = await callAI(prompt);
     console.log('[extract] Raw AI text (first 300):', rawAiText.substring(0, 300));
