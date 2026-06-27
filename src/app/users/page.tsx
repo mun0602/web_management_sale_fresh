@@ -36,16 +36,14 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal tạo thành viên bàn phím
-  const [showKeyboardModal, setShowKeyboardModal] = useState(false);
-  // Modal tạo admin
-  const [showAdminModal, setShowAdminModal] = useState(false);
+  // Modal tạo người dùng (gộp chung)
+  const [showUserModal, setShowUserModal] = useState(false);
 
   const [newEmail, setNewEmail] = useState('');
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState('SUPPORT');
+  const [newRole, setNewRole] = useState('USER');
   const [submitting, setSubmitting] = useState(false);
 
   // Modal cấp thêm AI credit
@@ -85,8 +83,7 @@ export default function UsersPage() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowKeyboardModal(false);
-        setShowAdminModal(false);
+        setShowUserModal(false);
         setShowCreditModal(false);
       }
     };
@@ -95,34 +92,18 @@ export default function UsersPage() {
   }, []);
 
   const resetForm = () => {
-    setNewEmail(''); setNewName(''); setNewPhone(''); setNewPassword(''); setNewRole('SUPPORT');
+    setNewEmail(''); setNewName(''); setNewPhone(''); setNewPassword(''); 
+    setNewRole(activeTab === 'keyboard' ? 'USER' : 'SUPPORT');
   };
 
-  // Tạo thành viên bàn phím
-  const handleCreateKeyboardUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await usersApi.createUser({ email: newEmail, name: newName, phone: newPhone, password: newPassword, role: 'USER' });
-      toast.success(`✅ Đã tạo thành viên bàn phím: ${newEmail}`);
-      setShowKeyboardModal(false);
-      resetForm();
-      fetchUsers();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Lỗi kết nối máy chủ.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Tạo admin
-  const handleCreateAdmin = async (e: React.FormEvent) => {
+  // Tạo người dùng mới (áp dụng cho cả USER bàn phím và Admin)
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await usersApi.createUser({ email: newEmail, name: newName, phone: newPhone, password: newPassword, role: newRole });
-      toast.success(`✅ Đã tạo Admin ${newRole}: ${newEmail}`);
-      setShowAdminModal(false);
+      toast.success(`✅ Đã tạo thành công tài khoản: ${newEmail} (${newRole})`);
+      setShowUserModal(false);
       resetForm();
       fetchUsers();
     } catch (err: any) {
@@ -238,17 +219,19 @@ export default function UsersPage() {
           <p>Thành viên bàn phím & Quản trị viên trong PostgreSQL</p>
         </div>
         <div className="flex gap-3">
-          {isKeyboard ? (
-            <button id="btn-add-keyboard-user" className="btn btn-primary" onClick={() => setShowKeyboardModal(true)}>
-              <UserPlus size={16} style={{ marginRight: '0.4rem' }} />
-              Thêm thành viên BĐS
-            </button>
-          ) : (
-            <button id="btn-add-admin" className="btn btn-primary" onClick={() => setShowAdminModal(true)}>
-              <Plus size={16} style={{ marginRight: '0.4rem' }} />
-              Thêm Admin
-            </button>
-          )}
+          <button 
+            id="btn-add-user" 
+            className="btn btn-primary" 
+            onClick={() => { 
+              resetForm(); 
+              // Cập nhật lại role theo tab hiện tại ngay lập tức khi mở modal
+              setNewRole(activeTab === 'keyboard' ? 'USER' : 'SUPPORT');
+              setShowUserModal(true); 
+            }}
+          >
+            <UserPlus size={16} style={{ marginRight: '0.4rem' }} />
+            Thêm User
+          </button>
         </div>
       </div>
 
@@ -439,101 +422,60 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Modal tạo thành viên bàn phím */}
-      {showKeyboardModal && (
+      {/* Modal tạo Người dùng (Gộp chung) */}
+      {showUserModal && (
         <div
-          role="dialog" aria-modal="true" aria-labelledby="modal-kb-title"
+          role="dialog" aria-modal="true" aria-labelledby="modal-user-title"
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={e => { if (e.target === e.currentTarget) setShowKeyboardModal(false); }}
+          onClick={e => { if (e.target === e.currentTarget) setShowUserModal(false); }}
         >
           <div className="glass-card" style={{ width: 420, padding: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <UserPlus size={22} color="var(--primary)" />
-              <h3 id="modal-kb-title" style={{ margin: 0 }}>Thêm Thành viên Bàn phím BĐS</h3>
+              <h3 id="modal-user-title" style={{ margin: 0 }}>Thêm Người dùng mới</h3>
             </div>
-            <form onSubmit={handleCreateKeyboardUser} className="flex-col gap-4">
+            <form onSubmit={handleCreateUser} className="flex-col gap-4">
               <div>
-                <label htmlFor="kb-name" style={{ display: 'block', marginBottom: '0.25rem' }}>Họ và tên</label>
-                <input id="kb-name" type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                <label htmlFor="user-name" style={{ display: 'block', marginBottom: '0.25rem' }}>Họ và tên</label>
+                <input id="user-name" type="text" value={newName} onChange={e => setNewName(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label htmlFor="kb-phone" style={{ display: 'block', marginBottom: '0.25rem' }}>Số điện thoại</label>
-                <input id="kb-phone" type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)}
+                <label htmlFor="user-phone" style={{ display: 'block', marginBottom: '0.25rem' }}>Số điện thoại</label>
+                <input id="user-phone" type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label htmlFor="kb-email" style={{ display: 'block', marginBottom: '0.25rem' }}>Email <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="kb-email" type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                <label htmlFor="user-email" style={{ display: 'block', marginBottom: '0.25rem' }}>Email <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input id="user-email" type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)}
                   placeholder="vd: nguyenvana@gmail.com"
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label htmlFor="kb-pass" style={{ display: 'block', marginBottom: '0.25rem' }}>Mật khẩu khởi tạo <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="kb-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
-              </div>
-              <div style={{ padding: '0.75rem', background: 'var(--surface-bg)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--primary)' }}>
-                Role: <strong>USER (Bàn phím BĐS)</strong> — Mặc định 5 lượt AI/ngày, nâng lên khi gán gói.
-              </div>
-              <div className="flex justify-end gap-2 mt-2">
-                <button type="button" className="btn btn-outline" onClick={() => setShowKeyboardModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Đang tạo...' : '✅ Tạo thành viên'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal tạo Admin */}
-      {showAdminModal && (
-        <div
-          role="dialog" aria-modal="true" aria-labelledby="modal-admin-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={e => { if (e.target === e.currentTarget) setShowAdminModal(false); }}
-        >
-          <div className="glass-card" style={{ width: 420, padding: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-              <ShieldAlert size={22} color="var(--primary)" />
-              <h3 id="modal-admin-title" style={{ margin: 0 }}>Thêm Quản trị viên mới</h3>
-            </div>
-            <form onSubmit={handleCreateAdmin} className="flex-col gap-4">
-              <div>
-                <label htmlFor="admin-name" style={{ display: 'block', marginBottom: '0.25rem' }}>Họ và tên</label>
-                <input id="admin-name" type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                <label htmlFor="user-pass" style={{ display: 'block', marginBottom: '0.25rem' }}>Mật khẩu khởi tạo <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input id="user-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
               <div>
-                <label htmlFor="admin-phone" style={{ display: 'block', marginBottom: '0.25rem' }}>Số điện thoại</label>
-                <input id="admin-phone" type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label htmlFor="admin-email" style={{ display: 'block', marginBottom: '0.25rem' }}>Email Admin <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="admin-email" type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label htmlFor="admin-pass" style={{ display: 'block', marginBottom: '0.25rem' }}>Mật khẩu khởi tạo <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="admin-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label htmlFor="admin-role" style={{ display: 'block', marginBottom: '0.25rem' }}>Phân quyền</label>
-                <select id="admin-role" value={newRole} onChange={e => setNewRole(e.target.value)}
+                <label htmlFor="user-role" style={{ display: 'block', marginBottom: '0.25rem' }}>Phân quyền / Role</label>
+                <select id="user-role" value={newRole} onChange={e => setNewRole(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
-                  <option value="SUPER_ADMIN">SUPER_ADMIN — Toàn quyền</option>
-                  <option value="FINANCE">FINANCE — Quản lý tài chính</option>
-                  <option value="SUPPORT">SUPPORT — Hỗ trợ khách hàng</option>
-                  <option value="READ_ONLY">READ_ONLY — Chỉ xem</option>
+                  <option value="USER">🔑 USER — Thành viên Bàn phím BĐS</option>
+                  <option value="SUPER_ADMIN">⚙️ SUPER_ADMIN — Toàn quyền quản trị</option>
+                  <option value="SUPPORT">💬 SUPPORT — Hỗ trợ khách hàng</option>
+                  <option value="FINANCE">💳 FINANCE — Quản lý tài chính</option>
+                  <option value="READ_ONLY">👁️ READ_ONLY — Chỉ xem báo cáo</option>
                 </select>
               </div>
+              {newRole === 'USER' && (
+                <div style={{ padding: '0.75rem', background: 'var(--surface-bg)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--primary)' }}>
+                  Mặc định <strong>5 lượt AI/ngày</strong>, hạn ngạch sẽ tăng lên khi gán gói dịch vụ cho thành viên.
+                </div>
+              )}
               <div className="flex justify-end gap-2 mt-2">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAdminModal(false)}>Hủy</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowUserModal(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Đang lưu...' : 'Thêm Admin'}
+                  {submitting ? 'Đang tạo...' : '✅ Tạo người dùng'}
                 </button>
               </div>
             </form>
