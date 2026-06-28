@@ -7,11 +7,60 @@ export async function GET(request: Request) {
   if (!session) return unauthorizedResponse();
 
   try {
-    const profiles = await prisma.contentProfile.findMany({
+    let profiles = await prisma.contentProfile.findMany({
       where: { ownerUserId: session.sub },
       include: { samples: true },
       orderBy: { createdAt: 'desc' }
     });
+
+    if (profiles.length === 0) {
+      const nowMs = Date.now();
+      const defaultProfiles = [
+        {
+          id: `profile_def1_${nowMs}`,
+          ownerUserId: session.sub,
+          name: "Trang trọng & Chuyên nghiệp",
+          relationship: "Chuyên viên tư vấn BĐS cao cấp",
+          length: "dài",
+          emojiLevel: "ít",
+          defaultCta: "Liên hệ ngay để xem nhà thực tế.",
+          defaultHashtags: "#batdongsan #chuyennghiep",
+          forbiddenWords: ""
+        },
+        {
+          id: `profile_def2_${nowMs}`,
+          ownerUserId: session.sub,
+          name: "Gần gũi & Cảm xúc",
+          relationship: "Người chia sẻ tổ ấm gia đình",
+          length: "trung bình",
+          emojiLevel: "vừa phải",
+          defaultCta: "Hãy đến và cảm nhận ngôi nhà mơ ước của bạn.",
+          defaultHashtags: "#toam #giadinh",
+          forbiddenWords: ""
+        },
+        {
+          id: `profile_def3_${nowMs}`,
+          ownerUserId: session.sub,
+          name: "Thu hút & Đánh mạnh ưu điểm",
+          relationship: "Chuyên gia săn sale BĐS giá tốt",
+          length: "ngắn",
+          emojiLevel: "nhiều",
+          defaultCta: "Chốt ngay kẻo lỡ! Giá quá tốt!",
+          defaultHashtags: "#bdsgiatot #sansale",
+          forbiddenWords: ""
+        }
+      ];
+
+      await prisma.contentProfile.createMany({
+        data: defaultProfiles
+      });
+
+      profiles = await prisma.contentProfile.findMany({
+        where: { ownerUserId: session.sub },
+        include: { samples: true },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
 
     const mappedProfiles = profiles.map(p => ({
       id: p.id,
