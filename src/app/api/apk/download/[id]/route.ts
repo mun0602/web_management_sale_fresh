@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': 'application/vnd.android.package-archive',
-        'Content-Disposition': `attachment; filename="${release.fileName}"`,
+        'Content-Disposition': `attachment; filename="sale_keyboard_${release.versionName}.apk"`,
       },
     });
   } catch (error: any) {
