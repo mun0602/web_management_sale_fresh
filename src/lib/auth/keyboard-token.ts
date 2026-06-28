@@ -95,7 +95,8 @@ export async function verifyKeyboardToken(token: string): Promise<KeyboardSessio
       return null; // Token hết hạn
     }
 
-    // Kiểm tra trùng lặp session (Active Session) trên Redis
+    // Bỏ qua kiểm tra trùng lặp session (Active Session) để tránh đá phiên của bàn phím khi đăng nhập web
+    /*
     if (payload.sid) {
       const activeSession = await redis.get(`session:${payload.sub}`);
       if (activeSession && activeSession !== payload.sid) {
@@ -103,6 +104,7 @@ export async function verifyKeyboardToken(token: string): Promise<KeyboardSessio
         return null; // Trùng lặp/phiên khác đã chiếm dụng
       }
     }
+    */
 
     return payload;
   } catch (err) {
