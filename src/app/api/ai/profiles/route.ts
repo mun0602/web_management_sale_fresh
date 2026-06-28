@@ -7,60 +7,70 @@ export async function GET(request: Request) {
   if (!session) return unauthorizedResponse();
 
   try {
-    let profiles = await prisma.contentProfile.findMany({
-      where: { ownerUserId: session.sub },
-      include: { samples: true },
-      orderBy: { createdAt: 'desc' }
+    // Danh sách 3 phong cách mặc định cần đảm bảo luôn tồn tại
+    const DEFAULT_NAMES = [
+      "Trang trọng & Chuyên nghiệp",
+      "Gần gũi & Cảm xúc",
+      "Thu hút & Đánh mạnh ưu điểm"
+    ];
+
+    // Kiểm tra từng phong cách mặc định có tồn tại chưa
+    const existing = await prisma.contentProfile.findMany({
+      where: {
+        ownerUserId: session.sub,
+        name: { in: DEFAULT_NAMES }
+      },
+      select: { name: true }
     });
 
-    if (profiles.length === 0) {
-      const nowMs = Date.now();
-      const defaultProfiles = [
-        {
-          id: `profile_def1_${nowMs}`,
-          ownerUserId: session.sub,
-          name: "Trang trọng & Chuyên nghiệp",
-          relationship: "Chuyên viên tư vấn BĐS cao cấp",
-          length: "dài",
-          emojiLevel: "ít",
-          defaultCta: "Liên hệ ngay để xem nhà thực tế.",
-          defaultHashtags: "#batdongsan #chuyennghiep",
-          forbiddenWords: ""
-        },
-        {
-          id: `profile_def2_${nowMs}`,
-          ownerUserId: session.sub,
-          name: "Gần gũi & Cảm xúc",
-          relationship: "Người chia sẻ tổ ấm gia đình",
-          length: "trung bình",
-          emojiLevel: "vừa phải",
-          defaultCta: "Hãy đến và cảm nhận ngôi nhà mơ ước của bạn.",
-          defaultHashtags: "#toam #giadinh",
-          forbiddenWords: ""
-        },
-        {
-          id: `profile_def3_${nowMs}`,
-          ownerUserId: session.sub,
-          name: "Thu hút & Đánh mạnh ưu điểm",
-          relationship: "Chuyên gia săn sale BĐS giá tốt",
-          length: "ngắn",
-          emojiLevel: "nhiều",
-          defaultCta: "Chốt ngay kẻo lỡ! Giá quá tốt!",
-          defaultHashtags: "#bdsgiatot #sansale",
-          forbiddenWords: ""
-        }
-      ];
+    const existingNames = new Set(existing.map(p => p.name));
+    const nowMs = Date.now();
 
-      await prisma.contentProfile.createMany({
-        data: defaultProfiles
-      });
+    const toSeed = [
+      {
+        id: `profile_def1_${nowMs}`,
+        ownerUserId: session.sub,
+        name: "Trang trọng & Chuyên nghiệp",
+        relationship: "Chuyên viên tư vấn BĐS cao cấp",
+        length: "dài",
+        emojiLevel: "ít",
+        defaultCta: "Liên hệ ngay để xem nhà thực tế.",
+        defaultHashtags: "#batdongsan #chuyennghiep",
+        forbiddenWords: ""
+      },
+      {
+        id: `profile_def2_${nowMs + 1}`,
+        ownerUserId: session.sub,
+        name: "Gần gũi & Cảm xúc",
+        relationship: "Người chia sẻ tổ ấm gia đình",
+        length: "trung bình",
+        emojiLevel: "vừa phải",
+        defaultCta: "Hãy đến và cảm nhận ngôi nhà mơ ước của bạn.",
+        defaultHashtags: "#toam #giadinh",
+        forbiddenWords: ""
+      },
+      {
+        id: `profile_def3_${nowMs + 2}`,
+        ownerUserId: session.sub,
+        name: "Thu hút & Đánh mạnh ưu điểm",
+        relationship: "Chuyên gia săn sale BĐS giá tốt",
+        length: "ngắn",
+        emojiLevel: "nhiều",
+        defaultCta: "Chốt ngay kẻo lỡ! Giá quá tốt!",
+        defaultHashtags: "#bdsgiatot #sansale",
+        forbiddenWords: ""
+      }
+    ].filter(p => !existingNames.has(p.name));
 
-      profiles = await prisma.contentProfile.findMany({
-        where: { ownerUserId: session.sub },
-        include: { samples: true },
-        orderBy: { createdAt: 'desc' }
-      });
+    if (toSeed.length > 0) {
+      await prisma.contentProfile.createMany({ data: toSeed });
     }
+
+    const profiles = await prisma.contentProfile.findMany({
+      where: { ownerUserId: session.sub },
+      include: { samples: true },
+      orderBy: { createdAt: 'asc' }
+    });
 
     const mappedProfiles = profiles.map(p => ({
       id: p.id,
@@ -85,6 +95,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
+
 
 export async function POST(request: Request) {
   const session = await getAuthorizedUser(request);
