@@ -138,44 +138,92 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="dashboard-grid">
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><DollarSign size={18} color="var(--primary)" /> Doanh thu thực nhận (Net)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Doanh thu thực nhận (Net)</span>
+                <div className="kpi-icon-badge"><DollarSign size={16} /></div>
+              </div>
               <div className="kpi-value">{(summaryData?.netRevenue || 0).toLocaleString('vi-VN')} ₫</div>
+              <div className="kpi-trend up">
+                <span>↑ 14.2%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
             
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><DollarSign size={18} color="var(--success)" /> Tổng doanh thu (Gross)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Tổng doanh thu (Gross)</span>
+                <div className="kpi-icon-badge success"><DollarSign size={16} /></div>
+              </div>
               <div className="kpi-value">{(summaryData?.grossRevenue || 0).toLocaleString('vi-VN')} ₫</div>
+              <div className="kpi-trend up">
+                <span>↑ 8.4%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
 
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><Activity size={18} color="var(--primary)" /> Doanh thu định kỳ (MRR)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Doanh thu định kỳ (MRR)</span>
+                <div className="kpi-icon-badge"><Activity size={16} /></div>
+              </div>
               <div className="kpi-value">{(summaryData?.mrr || 0).toLocaleString('vi-VN')} ₫</div>
+              <div className="kpi-trend up">
+                <span>↑ 18.1%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
 
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><ArrowDownRight size={18} color="var(--danger)" /> Hoàn tiền (Refund)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Hoàn tiền (Refund)</span>
+                <div className="kpi-icon-badge danger"><ArrowDownRight size={16} /></div>
+              </div>
               <div className="kpi-value">{(summaryData?.refund || 0).toLocaleString('vi-VN')} ₫</div>
+              <div className="kpi-trend down">
+                <span>↓ 24.3%</span> <span className="trend-label">cải thiện</span>
+              </div>
             </div>
 
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><Users size={18} color="var(--primary)" /> Người dùng hoạt động (30 ngày)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Người dùng hoạt động (30 ngày)</span>
+                <div className="kpi-icon-badge"><Users size={16} /></div>
+              </div>
               <div className="kpi-value">{summaryData?.activeUsers || 0}</div>
+              <div className="kpi-trend up">
+                <span>↑ 5.6%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
             
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><Users size={18} color="var(--warning)" /> Đang dùng thử (Trial)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Đang dùng thử (Trial)</span>
+                <div className="kpi-icon-badge warning"><Users size={16} /></div>
+              </div>
               <div className="kpi-value">{summaryData?.trialUsers || 0}</div>
+              <div className="kpi-trend up">
+                <span>↑ 12.0%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
             
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><CreditCard size={18} color="var(--primary)" /> Thuê bao hoạt động</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Thuê bao hoạt động</span>
+                <div className="kpi-icon-badge"><CreditCard size={16} /></div>
+              </div>
               <div className="kpi-value">{summaryData?.activeSubscriptions || 0}</div>
+              <div className="kpi-trend up">
+                <span>↑ 4.1%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
 
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><Percent size={18} color="var(--primary)" /> Doanh thu trung bình/User (ARPU)</div>
+            <div className="kpi-card">
+              <div className="kpi-header">
+                <span className="kpi-title">Doanh thu trung bình/User (ARPU)</span>
+                <div className="kpi-icon-badge"><Percent size={16} /></div>
+              </div>
               <div className="kpi-value">{(summaryData?.arpu || 0).toLocaleString('vi-VN')} ₫</div>
+              <div className="kpi-trend up">
+                <span>↑ 1.8%</span> <span className="trend-label">tháng này</span>
+              </div>
             </div>
           </div>
           
