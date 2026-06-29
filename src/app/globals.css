@@ -529,6 +529,7 @@ tr:hover td {
 
   .glass-card {
     padding: 1.25rem !important;
+    width: 100% !important;
     max-width: calc(100vw - 2rem) !important;
     margin: 0 auto;
   }
