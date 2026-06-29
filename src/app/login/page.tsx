@@ -34,50 +34,52 @@ export default function Login() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100dvh', background: 'var(--bg-color)' }}>
-      <div className="glass-card" style={{ width: 400, padding: '2rem' }}>
+    <div className="login-container">
+      <div className="login-card">
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Activity size={48} color="var(--primary)" style={{ margin: '0 auto 1rem' }} />
-          <h2>Đăng nhập Admin</h2>
-          <p>Hệ thống quản trị SaleKeyboard</p>
+          <div className="login-logo-badge">
+            <Activity size={28} />
+          </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Đăng nhập Admin</h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Hệ thống quản trị SaleKeyboard</p>
         </div>
         
         <form onSubmit={handleLogin} className="flex-col gap-4">
           <div className="flex-col gap-1">
-            <label htmlFor="email-input" className="sr-only">Email quản trị viên</label>
-            <div className="flex items-center gap-2" style={{ background: 'var(--bg-color)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+            <label htmlFor="email-input" className="input-label">Tài khoản / Email</label>
+            <div className="login-input-group">
               <Mail size={18} color="var(--text-secondary)" />
               <input 
                 id="email-input"
                 type="text" 
-                placeholder="Tài khoản quản trị viên" 
+                placeholder="admin@example.com" 
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 disabled={loading}
-                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text-primary)' }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text-primary)', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
           <div className="flex-col gap-1">
-            <label htmlFor="password-input" className="sr-only">Mật khẩu</label>
-            <div className="flex items-center gap-2" style={{ background: 'var(--bg-color)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+            <label htmlFor="password-input" className="input-label">Mật khẩu</label>
+            <div className="login-input-group">
               <Lock size={18} color="var(--text-secondary)" />
               <input 
                 id="password-input"
                 type="password" 
-                placeholder="Mật khẩu" 
+                placeholder="••••••••" 
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 disabled={loading}
-                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text-primary)' }}
+                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text-primary)', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="btn btn-primary mt-4" style={{ width: '100%' }}>
+          <button type="submit" disabled={loading} className="btn btn-primary mt-4 w-full">
             {loading ? 'Đang xử lý...' : 'Đăng nhập an toàn'}
           </button>
         </form>

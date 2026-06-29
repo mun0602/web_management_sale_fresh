@@ -306,14 +306,14 @@ export default function UsersPage() {
 
       {/* Search */}
       <div className="glass-panel mb-6 p-4">
-        <div className="flex items-center gap-2">
+        <div className="user-search-container">
           <Search size={18} color="var(--text-secondary)" />
           <input
             type="text"
+            className="user-search-input"
             placeholder="Tìm kiếm theo email, họ tên, số điện thoại..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', color: 'var(--text-primary)' }}
           />
         </div>
       </div>
@@ -347,7 +347,7 @@ export default function UsersPage() {
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
                     <td data-label="Tài khoản" style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <div className="user-info-cell">
                         <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
                         {isLocked && <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>LOCKED</span>}
                       </div>
@@ -441,10 +441,10 @@ export default function UsersPage() {
       {showUserModal && (
         <div
           role="dialog" aria-modal="true" aria-labelledby="modal-user-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          className="modal-overlay"
           onClick={e => { if (e.target === e.currentTarget) setShowUserModal(false); }}
         >
-          <div className="glass-card" style={{ width: 420, padding: '2rem' }}>
+          <div className="modal-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <UserPlus size={22} color="var(--primary)" />
               <h3 id="modal-user-title" style={{ margin: 0 }}>Thêm Người dùng mới</h3>
@@ -545,10 +545,10 @@ export default function UsersPage() {
       {showCreditModal && creditTarget && (
         <div
           role="dialog" aria-modal="true" aria-labelledby="modal-credit-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          className="modal-overlay"
           onClick={e => { if (e.target === e.currentTarget) { setShowCreditModal(false); setCreditTarget(null); }}}
         >
-          <div className="glass-card" style={{ width: 380, padding: '2rem' }}>
+          <div className="modal-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
               <Zap size={22} color="var(--success)" />
               <h3 id="modal-credit-title" style={{ margin: 0 }}>Cấp thêm AI Credit</h3>
