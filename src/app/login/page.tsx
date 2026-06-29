@@ -34,7 +34,7 @@ export default function Login() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-color)' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100dvh', background: 'var(--bg-color)' }}>
       <div className="glass-card" style={{ width: 400, padding: '2rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <Activity size={48} color="var(--primary)" style={{ margin: '0 auto 1rem' }} />
