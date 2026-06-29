@@ -11,6 +11,12 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
+    if (admin.role === 'SALE') {
+      return NextResponse.json(
+        { error: { message: 'Tài khoản sale không có quyền truy cập audit log.' } },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';

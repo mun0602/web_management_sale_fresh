@@ -45,11 +45,16 @@ export async function GET(request: Request) {
       }
     } : {};
 
+    const saleUserFilter = admin.role === 'SALE' ? { createdBySaleId: admin.id } : {};
+    const salePaymentFilter = admin.role === 'SALE' ? { user: { createdBySaleId: admin.id } } : {};
+    const saleSubscriptionFilter = admin.role === 'SALE' ? { user: { createdBySaleId: admin.id } } : {};
+
     // 1. Tính toán doanh thu từ bảng Payment thật (dùng aggregate thay vì findMany)
     const grossRevenueResult = await prisma.payment.aggregate({
       _sum: { amount: true },
       where: { 
         status: 'succeeded',
+        ...salePaymentFilter,
         ...dateFilter
       },
     });
@@ -57,6 +62,7 @@ export async function GET(request: Request) {
       _sum: { amount: true },
       where: { 
         status: 'refunded',
+        ...salePaymentFilter,
         ...dateFilter
       },
     });
@@ -68,12 +74,14 @@ export async function GET(request: Request) {
     const activeSubsCount = await prisma.subscription.count({
       where: { 
         status: 'active',
+        ...saleSubscriptionFilter,
         ...subDateFilter
       }
     });
 
     const activeUsersCount = await prisma.user.count({
       where: {
+        ...saleUserFilter,
         subscriptions: {
           some: { 
             status: 'active',
@@ -87,6 +95,7 @@ export async function GET(request: Request) {
     const trialUsersCount = await prisma.user.count({
       where: {
         role: 'USER',
+        ...saleUserFilter,
         ...userDateFilter,
         payments: {
           none: {}
@@ -98,6 +107,7 @@ export async function GET(request: Request) {
     const activeSubs = await prisma.subscription.findMany({
       where: { 
         status: 'active',
+        ...saleSubscriptionFilter,
         ...subDateFilter
       },
       include: { plan: true }

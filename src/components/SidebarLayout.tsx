@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { LayoutDashboard, Users, CreditCard, Activity, Package, LogOut, FileText, Menu, X, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, Package, LogOut, FileText, Menu, X, Zap, BarChart3 } from 'lucide-react';
 import { authApi } from '@/api/auth';
 
 const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
@@ -37,6 +37,7 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
   }, [pathname, router]);
 
   const closeSidebar = () => setSidebarOpen(false);
+  const isSale = role === 'SALE';
 
   const handleLogout = async () => {
     const toastId = toast.loading('Đang đăng xuất...');
@@ -78,45 +79,57 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
           <li>
             <Link href="/" onClick={closeSidebar} className={`nav-item ${pathname === '/' ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
-              Tổng quan
+              {isSale ? 'Doanh thu của tôi' : 'Tổng quan'}
             </Link>
           </li>
           <li>
             <Link href="/users" onClick={closeSidebar} className={`nav-item ${pathname === '/users' ? 'active' : ''}`}>
               <Users size={20} />
-              Người dùng
+              {isSale ? 'Tạo user' : 'Người dùng'}
             </Link>
           </li>
-          <li>
-            <Link href="/plans" onClick={closeSidebar} className={`nav-item ${pathname === '/plans' ? 'active' : ''}`}>
-              <Package size={20} />
-              Gói dịch vụ
-            </Link>
-          </li>
-          <li>
-            <Link href="/subscriptions" onClick={closeSidebar} className={`nav-item ${pathname === '/subscriptions' ? 'active' : ''}`}>
-              <CreditCard size={20} />
-              Thuê bao
-            </Link>
-          </li>
-          <li>
-            <Link href="/payments" onClick={closeSidebar} className={`nav-item ${pathname === '/payments' ? 'active' : ''}`}>
-              <Activity size={20} />
-              Giao dịch
-            </Link>
-          </li>
-          <li>
-            <Link href="/ai-quota" onClick={closeSidebar} className={`nav-item ${pathname === '/ai-quota' ? 'active' : ''}`}>
-              <Zap size={20} />
-              Quản lý AI
-            </Link>
-          </li>
-          <li>
-            <Link href="/audit" onClick={closeSidebar} className={`nav-item ${pathname === '/audit' ? 'active' : ''}`}>
-              <FileText size={20} />
-              Audit Log
-            </Link>
-          </li>
+          {!isSale && (
+            <>
+              <li>
+                <Link href="/plans" onClick={closeSidebar} className={`nav-item ${pathname === '/plans' ? 'active' : ''}`}>
+                  <Package size={20} />
+                  Gói dịch vụ
+                </Link>
+              </li>
+              {role === 'SUPER_ADMIN' && (
+                <li>
+                  <Link href="/sales" onClick={closeSidebar} className={`nav-item ${pathname === '/sales' ? 'active' : ''}`}>
+                    <BarChart3 size={20} />
+                    Doanh thu Sale
+                  </Link>
+                </li>
+              )}
+              <li>
+                <Link href="/subscriptions" onClick={closeSidebar} className={`nav-item ${pathname === '/subscriptions' ? 'active' : ''}`}>
+                  <CreditCard size={20} />
+                  Thuê bao
+                </Link>
+              </li>
+              <li>
+                <Link href="/payments" onClick={closeSidebar} className={`nav-item ${pathname === '/payments' ? 'active' : ''}`}>
+                  <Activity size={20} />
+                  Giao dịch
+                </Link>
+              </li>
+              <li>
+                <Link href="/ai-quota" onClick={closeSidebar} className={`nav-item ${pathname === '/ai-quota' ? 'active' : ''}`}>
+                  <Zap size={20} />
+                  Quản lý AI
+                </Link>
+              </li>
+              <li>
+                <Link href="/audit" onClick={closeSidebar} className={`nav-item ${pathname === '/audit' ? 'active' : ''}`}>
+                  <FileText size={20} />
+                  Audit Log
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
         
         <div style={{ marginTop: 'auto' }}>

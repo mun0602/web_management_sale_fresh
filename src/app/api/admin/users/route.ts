@@ -23,6 +23,14 @@ async function calcAILimit(userId: string): Promise<{ limit: number; isUnlimited
   return unlimited ? { limit: -1, isUnlimited: true } : { limit: base + addon, isUnlimited: false };
 }
 
+function calcManualPaymentAmount(plan: { price: number; features: string }, durationDays: number) {
+  const features = plan.features || '';
+  if (features.split(',').map(f => f.trim()).includes('fixed_price')) {
+    return plan.price;
+  }
+  return Math.round((plan.price * durationDays) / 30);
+}
+
 export async function GET(request: Request) {
   try {
     const admin = await getSessionAdmin();
@@ -47,7 +55,10 @@ export async function GET(request: Request) {
       ];
     }
 
-    if (role !== 'all') {
+    if (admin.role === 'SALE') {
+      whereClause.role = 'USER';
+      whereClause.createdBySaleId = admin.id;
+    } else if (role !== 'all') {
       whereClause.role = role.toUpperCase();
     }
 
@@ -101,7 +112,7 @@ export async function POST(request: Request) {
     }
 
     // Chỉ cho phép tạo USER bàn phím từ màn quản lý người dùng.
-    if (!['SUPER_ADMIN', 'SUPPORT'].includes(admin.role)) {
+    if (!['SUPER_ADMIN', 'SUPPORT', 'SALE'].includes(admin.role)) {
       return NextResponse.json(
         { error: { message: 'Bạn không có quyền tạo tài khoản mới.' } },
         { status: 403 }
@@ -109,8 +120,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, password, name, phone } = body;
+    const { email, password, name, phone, planId, durationDays, accountRole } = body;
     const account = typeof email === 'string' ? email.trim() : '';
+    const normalizedPlanId = typeof planId === 'string' ? planId.trim() : '';
+    const normalizedDurationDays = Number(durationDays || 30);
+    const normalizedAccountRole = typeof accountRole === 'string' ? accountRole.toUpperCase() : 'USER';
 
     if (!account || !password) {
       return NextResponse.json(
@@ -133,6 +147,34 @@ export async function POST(request: Request) {
       );
     }
 
+    if (normalizedPlanId && (!Number.isInteger(normalizedDurationDays) || normalizedDurationDays <= 0)) {
+      return NextResponse.json(
+        { error: { message: 'Thời hạn gói cước không hợp lệ.' } },
+        { status: 400 }
+      );
+    }
+
+    if (!['USER', 'SALE'].includes(normalizedAccountRole)) {
+      return NextResponse.json(
+        { error: { message: 'Loại tài khoản không hợp lệ.' } },
+        { status: 400 }
+      );
+    }
+
+    if (normalizedAccountRole === 'SALE' && admin.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: { message: 'Chỉ Super Admin mới được tạo tài khoản sale.' } },
+        { status: 403 }
+      );
+    }
+
+    if (admin.role === 'SALE' && normalizedAccountRole === 'USER' && !normalizedPlanId) {
+      return NextResponse.json(
+        { error: { message: 'Tài khoản sale bắt buộc chọn gói khi tạo user.' } },
+        { status: 400 }
+      );
+    }
+
     // Kiểm tra tài khoản trùng lặp. Field DB vẫn là email để tránh migration.
     const existingUser = await prisma.user.findUnique({
       where: { email: account }
@@ -148,29 +190,86 @@ export async function POST(request: Request) {
     // Hash mật khẩu
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: {
-        email: account,
-        password: passwordHash,
-        role: 'USER',
-        name: name || null,
-        phone: phone || null
+    const plan = normalizedAccountRole === 'USER' && normalizedPlanId
+      ? await prisma.plan.findUnique({ where: { id: normalizedPlanId } })
+      : null;
+
+    if (normalizedPlanId && !plan) {
+      return NextResponse.json(
+        { error: { message: 'Không tìm thấy gói cước được chọn.' } },
+        { status: 404 }
+      );
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: account,
+          password: passwordHash,
+          role: normalizedAccountRole,
+          name: name || null,
+          phone: phone || null,
+          createdBySaleId: normalizedAccountRole === 'USER' && admin.role === 'SALE' ? admin.id : null
+        }
+      });
+
+      let subscription = null;
+      let payment = null;
+
+      if (plan) {
+        const startDate = new Date();
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + normalizedDurationDays);
+        const manualAmount = calcManualPaymentAmount(plan, normalizedDurationDays);
+
+        subscription = await tx.subscription.create({
+          data: {
+            userId: newUser.id,
+            planId: plan.id,
+            status: 'active',
+            startDate,
+            endDate,
+          },
+          include: { plan: true }
+        });
+
+        if (manualAmount > 0) {
+          payment = await tx.payment.create({
+            data: {
+              userId: newUser.id,
+              amount: manualAmount,
+              productName: `${plan.name} (${normalizedDurationDays} ngày)`,
+              platform: 'Manual',
+              transactionId: `manual_user_${newUser.id}_${Date.now()}`,
+              status: 'succeeded',
+            }
+          });
+        }
       }
+
+      await tx.auditLog.create({
+        data: {
+          action: 'CREATE_USER',
+          actor: admin.email,
+          target: `User #${newUser.id}`,
+          details: plan
+            ? `Tạo USER ${account}, cấp gói "${plan.name}" ${normalizedDurationDays} ngày, ghi nhận doanh thu ${calcManualPaymentAmount(plan, normalizedDurationDays).toLocaleString('vi-VN')} VNĐ.`
+            : `Tạo tài khoản ${normalizedAccountRole} mới: ${account}`,
+        }
+      });
+
+      return { newUser, subscription, payment };
     });
 
-    const { password: _, ...sanitizedNewUser } = newUser;
+    const { password: _, ...sanitizedNewUser } = result.newUser;
 
-    // Ghi Audit Log
-    await prisma.auditLog.create({
+    return NextResponse.json({
       data: {
-        action: 'CREATE_USER',
-        actor: admin.email,
-        target: `User #${newUser.id}`,
-        details: `Tạo tài khoản USER mới: ${account}`,
+        ...sanitizedNewUser,
+        subscription: result.subscription,
+        payment: result.payment,
       }
     });
-
-    return NextResponse.json({ data: sanitizedNewUser });
   } catch (error: any) {
     console.error('Error creating user:', error);
     return NextResponse.json(

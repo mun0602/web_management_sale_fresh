@@ -19,6 +19,7 @@ async function main() {
   try {
     console.log('Ensuring "sessionRevokedAt" column exists in "User" table...');
     await prisma.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "sessionRevokedAt" TIMESTAMP;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "created_by_sale_id" TEXT;');
     console.log('Database schema: "sessionRevokedAt" column checked/added successfully.');
   } catch (sqlError) {
     console.error('Failed to ensure sessionRevokedAt column exists:', sqlError);
@@ -65,6 +66,14 @@ async function main() {
       appleId: 'com.salekeyboard.premium.1y',
       googleId: 'com.salekeyboard.premium.1y',
       features: 'Không giới hạn thiết bị,ai_unlimited,Quản lý nhóm'
+    },
+    {
+      id: 'plan-lifetime-60d',
+      name: 'Vĩnh viễn (mở 60 ngày)',
+      price: 2800000,
+      appleId: 'com.salekeyboard.lifetime.60d',
+      googleId: 'com.salekeyboard.lifetime.60d',
+      features: 'Không giới hạn thiết bị,ai_unlimited,Quản lý nhóm,duration_days:60,fixed_price'
     },
     // Các gói mua thêm hạn mức AI (Add-ons)
     {

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/api/users';
+import { plansApi } from '@/api/plans';
+import { authApi } from '@/api/auth';
 
 interface AiQuota {
   limit: number;
@@ -28,8 +30,17 @@ interface User {
   }[];
 }
 
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  features: string;
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [currentRole, setCurrentRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,6 +51,9 @@ export default function UsersPage() {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [accountRole, setAccountRole] = useState<'USER' | 'SALE'>('USER');
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [durationDays, setDurationDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
 
   // Modal cấp thêm AI credit
@@ -50,7 +64,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { q: searchQuery, role: 'user' };
+      const params: Record<string, string> = { q: searchQuery, role: currentRole === 'SALE' ? 'user' : 'all' };
       const response = await usersApi.getUsers(params);
       const list = (response.data as unknown as User[]) || [];
       setUsers(list);
@@ -60,12 +74,29 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, currentRole]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timer);
   }, [fetchUsers]);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await plansApi.getPlans();
+        const list = ((response.data as unknown as Plan[]) || []).filter((p) => !p.id.startsWith('addon'));
+        setPlans(list);
+        if (list.length > 0) {
+          setSelectedPlanId((current) => current || list[0].id);
+          setDurationDays((current) => current || parseDefaultDuration(list[0].features));
+        }
+      } catch (err) {
+        console.error('Error fetching plans:', err);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   // Đóng modal bằng Escape
   useEffect(() => {
@@ -80,15 +111,71 @@ export default function UsersPage() {
   }, []);
 
   const resetForm = () => {
-    setNewEmail(''); setNewName(''); setNewPhone(''); setNewPassword(''); 
+    setNewEmail('');
+    setNewName('');
+    setNewPhone('');
+    setNewPassword('');
+    setAccountRole('USER');
+    if (plans.length > 0) {
+      setSelectedPlanId(plans[0].id);
+      setDurationDays(parseDefaultDuration(plans[0].features));
+    } else {
+      setDurationDays(30);
+    }
   };
+
+  const parseAiLimit = (features: string) => {
+    if (features.includes('ai_unlimited')) return '∞';
+    const token = features.split(',').map(f => f.trim()).find(f => f.startsWith('ai_limit:'));
+    return token ? token.slice('ai_limit:'.length) : '5';
+  };
+
+  const parseDefaultDuration = (features: string) => {
+    const token = features.split(',').map(f => f.trim()).find(f => f.startsWith('duration_days:'));
+    const parsed = token ? Number(token.slice('duration_days:'.length)) : 30;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 30;
+  };
+
+  const calcProjectedRevenue = (plan: Plan | undefined, days: number) => {
+    if (!plan) return 0;
+    if (plan.features.split(',').map(f => f.trim()).includes('fixed_price')) return plan.price;
+    return Math.round((plan.price * Number(days || 0)) / 30);
+  };
+
+  const selectedPlan = accountRole === 'USER' ? plans.find((p) => p.id === selectedPlanId) : undefined;
+  const projectedRevenue = calcProjectedRevenue(selectedPlan, durationDays);
+  const isSale = currentRole === 'SALE';
+
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const me = await authApi.getMe();
+        setCurrentRole((me as unknown as { role?: string }).role || '');
+      } catch (err) {
+        console.error('Error loading current user:', err);
+      }
+    };
+    loadMe();
+  }, []);
 
   // Tạo tài khoản USER bàn phím.
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSale && !selectedPlanId) {
+      toast.error('Tài khoản sale bắt buộc chọn gói khi tạo user.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await usersApi.createUser({ email: newEmail, name: newName, phone: newPhone, password: newPassword });
+      await usersApi.createUser({
+        email: newEmail,
+        name: newName,
+        phone: newPhone,
+        password: newPassword,
+        accountRole,
+        planId: accountRole === 'USER' ? selectedPlanId : '',
+        durationDays: Number(durationDays),
+      });
       toast.success(`✅ Đã tạo thành công tài khoản: ${newEmail}`);
       setShowUserModal(false);
       resetForm();
@@ -199,8 +286,8 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ marginBottom: 0 }}>Quản lý Người dùng</h1>
-          <p>Thành viên bàn phím & Quản trị viên trong PostgreSQL</p>
+          <h1 style={{ marginBottom: 0 }}>{isSale ? 'User của tôi' : 'Quản lý Người dùng'}</h1>
+          <p>{isSale ? 'Tạo user bàn phím và bán gói dịch vụ' : 'Thành viên bàn phím & Quản trị viên trong PostgreSQL'}</p>
         </div>
         <div className="flex gap-3">
           <button 
@@ -249,7 +336,7 @@ export default function UsersPage() {
                 <th style={{ padding: '1rem' }}>Gói hiện tại</th>
                 <th style={{ padding: '1rem' }}>AI Credit hôm nay</th>
                 <th style={{ padding: '1rem' }}>TK</th>
-                <th style={{ padding: '1rem' }}>Thao tác</th>
+                {!isSale && <th style={{ padding: '1rem' }}>Thao tác</th>}
               </tr>
             </thead>
             <tbody>
@@ -287,59 +374,61 @@ export default function UsersPage() {
                         {isLocked ? 'LOCKED' : 'ACTIVE'}
                       </span>
                     </td>
-                    <td data-label="Thao tác" style={{ padding: '1rem' }}>
-                      <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: '0.25rem 0.5rem', color: 'var(--success)', borderColor: 'var(--success)' }}
-                          onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
-                          title="Cấp thêm AI credit"
-                          aria-label="Cấp thêm AI credit"
-                        >
-                          <Zap size={14} />
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: '0.25rem 0.5rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
-                          onClick={() => handleResetQuota(u)}
-                          title="Reset AI quota"
-                          aria-label="Reset AI quota về 0"
-                        >
-                          <RotateCcw size={14} />
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: '0.25rem 0.5rem' }}
-                          onClick={() => handleChangePassword(u.id, u.email)}
-                          title="Đổi mật khẩu"
-                          aria-label="Đổi mật khẩu"
-                        >
-                          <Key size={14} />
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            color: isLocked ? 'var(--warning)' : 'inherit',
-                            borderColor: isLocked ? 'var(--warning)' : 'inherit'
-                          }}
-                          onClick={() => handleToggleLock(u.id, u.email, u.status)}
-                          title={isLocked ? 'Mở khóa' : 'Khóa tài khoản'}
-                          aria-label={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                        >
-                          {isLocked ? <Unlock size={14} /> : <Lock size={14} />}
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: '0.25rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                          onClick={() => handleDeleteUser(u.id, u.email)}
-                          title="Xóa người dùng"
-                          aria-label="Xóa người dùng"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+                    {!isSale && (
+                      <td data-label="Thao tác" style={{ padding: '1rem' }}>
+                        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem 0.5rem', color: 'var(--success)', borderColor: 'var(--success)' }}
+                            onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
+                            title="Cấp thêm AI credit"
+                            aria-label="Cấp thêm AI credit"
+                          >
+                            <Zap size={14} />
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem 0.5rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
+                            onClick={() => handleResetQuota(u)}
+                            title="Reset AI quota"
+                            aria-label="Reset AI quota về 0"
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem 0.5rem' }}
+                            onClick={() => handleChangePassword(u.id, u.email)}
+                            title="Đổi mật khẩu"
+                            aria-label="Đổi mật khẩu"
+                          >
+                            <Key size={14} />
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              color: isLocked ? 'var(--warning)' : 'inherit',
+                              borderColor: isLocked ? 'var(--warning)' : 'inherit'
+                            }}
+                            onClick={() => handleToggleLock(u.id, u.email, u.status)}
+                            title={isLocked ? 'Mở khóa' : 'Khóa tài khoản'}
+                            aria-label={isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                          >
+                            {isLocked ? <Unlock size={14} /> : <Lock size={14} />}
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            style={{ padding: '0.25rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            onClick={() => handleDeleteUser(u.id, u.email)}
+                            title="Xóa người dùng"
+                            aria-label="Xóa người dùng"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -382,8 +471,64 @@ export default function UsersPage() {
                 <input id="user-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
               </div>
+              {!isSale && (
+                <div>
+                  <label htmlFor="account-role" style={{ display: 'block', marginBottom: '0.25rem' }}>Loại tài khoản</label>
+                  <select
+                    id="account-role"
+                    value={accountRole}
+                    onChange={e => setAccountRole(e.target.value as 'USER' | 'SALE')}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="USER">User bàn phím</option>
+                    <option value="SALE">Sale</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label htmlFor="user-plan" style={{ display: 'block', marginBottom: '0.25rem' }}>Gói kích hoạt ban đầu</label>
+                <select
+                  id="user-plan"
+                  value={selectedPlanId}
+                  onChange={e => {
+                    const nextPlanId = e.target.value;
+                    setSelectedPlanId(nextPlanId);
+                    const nextPlan = plans.find((plan) => plan.id === nextPlanId);
+                    setDurationDays(nextPlan ? parseDefaultDuration(nextPlan.features) : 30);
+                  }}
+                  disabled={accountRole !== 'USER'}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                >
+                  <option value="">Không gán gói</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - {plan.price.toLocaleString('vi-VN')}đ - AI {parseAiLimit(plan.features)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="user-duration" style={{ display: 'block', marginBottom: '0.25rem' }}>Thời hạn gói (ngày)</label>
+                <input
+                  id="user-duration"
+                  type="number"
+                  min={1}
+                  value={durationDays}
+                  onChange={e => setDurationDays(Number(e.target.value))}
+                  disabled={!selectedPlanId || accountRole !== 'USER'}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                />
+              </div>
               <div style={{ padding: '0.75rem', background: 'var(--surface-bg)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--primary)' }}>
-                Tài khoản tạo mới luôn là <strong>USER bàn phím</strong>. Mặc định <strong>5 lượt AI/ngày</strong>, hạn ngạch sẽ tăng lên khi gán gói dịch vụ cho thành viên.
+                {accountRole === 'SALE' ? (
+                  <>Tài khoản <strong>SALE</strong> chỉ được tạo user bàn phím, bán gói và xem doanh thu của chính mình.</>
+                ) : selectedPlan ? (
+                  <>
+                    Tài khoản tạo mới là <strong>USER bàn phím</strong>. Hệ thống sẽ cấp gói <strong>{selectedPlan.name}</strong>, hạn mức AI <strong>{parseAiLimit(selectedPlan.features)} lượt/ngày</strong>, và tự ghi nhận <strong>{projectedRevenue.toLocaleString('vi-VN')}đ</strong> vào doanh thu thủ công.
+                  </>
+                ) : (
+                  <>Tài khoản tạo mới là <strong>USER bàn phím</strong>. Không gán gói thì không ghi nhận doanh thu, user dùng hạn mức mặc định 5 lượt AI/ngày.</>
+                )}
               </div>
               <div className="flex justify-end gap-2 mt-2">
                 <button type="button" className="btn btn-outline" onClick={() => setShowUserModal(false)}>Hủy</button>

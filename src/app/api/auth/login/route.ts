@@ -59,7 +59,7 @@ function getDemoCredentials(): {
     !DEMO_ADMIN_ID ||
     !DEMO_ADMIN_EMAIL ||
     !DEMO_ADMIN_PASSWORD ||
-    !['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY'].includes(role ?? '')
+    !['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'SALE'].includes(role ?? '')
   ) {
     return null;
   }
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     let tokenPayload: { sub: string; role: AdminRole } | null = null;
 
     // Cho phép tất cả role đăng nhập (bao gồm USER bàn phím, SUPER_ADMIN, FINANCE, SUPPORT, READ_ONLY)
-    const ALLOWED_ROLES = ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'USER'];
+    const ALLOWED_ROLES = ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'SALE', 'USER'];
     if (user && ALLOWED_ROLES.includes(user.role)) {
       if (user.status === 'locked') {
         return json({ error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.' }, 403);

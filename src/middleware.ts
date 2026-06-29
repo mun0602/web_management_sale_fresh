@@ -31,6 +31,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(homeUrl);
   }
 
+  if (isAuthenticated && session?.role === 'SALE') {
+    const allowedSalePaths = ['/', '/users'];
+    const isAllowedSalePath = allowedSalePaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    if (!isAllowedSalePath) {
+      const saleHomeUrl = new URL('/', request.url);
+      return NextResponse.redirect(saleHomeUrl);
+    }
+  }
+
   return NextResponse.next();
 }
 

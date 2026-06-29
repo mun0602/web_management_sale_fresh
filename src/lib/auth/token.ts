@@ -1,7 +1,7 @@
 export const ADMIN_SESSION_COOKIE = 'admin_session';
 export const SESSION_TTL_SECONDS = 60 * 60;
 
-export type AdminRole = 'SUPER_ADMIN' | 'FINANCE' | 'SUPPORT' | 'READ_ONLY';
+export type AdminRole = 'SUPER_ADMIN' | 'FINANCE' | 'SUPPORT' | 'READ_ONLY' | 'SALE';
 
 export interface SessionPayload {
   sub: string;
@@ -76,7 +76,7 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 function isAdminRole(value: unknown): value is AdminRole {
-  return ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY'].includes(
+  return ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'SALE'].includes(
     String(value),
   );
 }

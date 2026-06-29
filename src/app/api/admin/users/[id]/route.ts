@@ -16,6 +16,12 @@ export async function PATCH(
         { status: 401 }
       );
     }
+    if (admin.role === 'SALE') {
+      return NextResponse.json(
+        { error: { message: 'Tài khoản sale không có quyền chỉnh sửa người dùng.' } },
+        { status: 403 }
+      );
+    }
 
     const body = await request.json();
     const { role, name, phone, password } = body;
@@ -37,7 +43,7 @@ export async function PATCH(
 
     if (role !== undefined) {
       const sanitizedRole = role.toUpperCase();
-      const allowedRoles = ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'USER'];
+      const allowedRoles = ['SUPER_ADMIN', 'FINANCE', 'SUPPORT', 'READ_ONLY', 'SALE', 'USER'];
       if (!allowedRoles.includes(sanitizedRole)) {
         return NextResponse.json(
           { error: { message: 'Quyền (Role) không hợp lệ.' } },

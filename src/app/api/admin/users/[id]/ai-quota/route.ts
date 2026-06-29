@@ -55,6 +55,9 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const admin = await getSessionAdmin();
     if (!admin) return json({ error: { message: 'Không được phép.' } }, 401);
+    if (admin.role === 'SALE') {
+      return json({ error: { message: 'Tài khoản sale không có quyền truy cập quản trị quota.' } }, 403);
+    }
 
     const { id } = await context.params;
 

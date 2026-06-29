@@ -14,6 +14,7 @@ export const authApi = {
   getMe: async (): Promise<User> => {
     const response = await apiClient.get<ApiResponse<User>>('/auth/me');
     // API backend trả về chuẩn data
-    return response.data.data ? response.data.data : (response.data as unknown as User);
+    const payload = response.data as unknown as { data?: User; user?: User };
+    return payload.data ? payload.data : (payload.user as User);
   },
 };

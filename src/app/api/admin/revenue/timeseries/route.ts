@@ -18,11 +18,13 @@ export async function GET(request: Request) {
 
     const fromDate = new Date(fromStr);
     const toDate = new Date(toStr);
+    const salePaymentFilter = admin.role === 'SALE' ? { user: { createdBySaleId: admin.id } } : {};
 
     // 1. Lấy tất cả các giao dịch thanh toán thành công trong khoảng thời gian chỉ định
     const payments = await prisma.payment.findMany({
       where: {
         status: 'succeeded',
+        ...salePaymentFilter,
         createdAt: {
           gte: fromDate,
           lte: toDate
