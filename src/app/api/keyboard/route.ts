@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { signKeyboardToken, verifyKeyboardToken } from '@/lib/auth/keyboard-token';
+import { randomUUID } from 'node:crypto';
+import { KEYBOARD_SESSION_TTL_SECONDS, signKeyboardToken, verifyKeyboardToken } from '@/lib/auth/keyboard-token';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import axios from 'axios';
@@ -7,6 +8,33 @@ import redis from '@/lib/redis';
 import { isRateLimited, getRateLimitResetSeconds } from '@/lib/rate-limit';
 import { checkAndIncrAIQuota } from '@/lib/ai-quota';
 import { generateRealEstateContent } from '@/lib/ai-provider';
+
+const SINGLE_DEVICE_LOGIN_MESSAGE = 'Tài khoản này chỉ được đăng nhập trên 1 thiết bị.';
+
+function normalizeDeviceId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const deviceId = value.trim();
+  if (deviceId.length < 8 || deviceId.length > 128) return null;
+  return /^[a-zA-Z0-9._:-]+$/.test(deviceId) ? deviceId : null;
+}
+
+function parseStoredSession(value: string | null): { sid: string; deviceId?: string } | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as { sid?: unknown; deviceId?: unknown };
+    if (typeof parsed.sid === 'string' && parsed.sid.length > 0) {
+      return {
+        sid: parsed.sid,
+        deviceId: typeof parsed.deviceId === 'string' && parsed.deviceId.length > 0
+          ? parsed.deviceId
+          : undefined,
+      };
+    }
+  } catch {
+    // Legacy session format: plain sid string.
+  }
+  return { sid: value };
+}
 
 // Dữ liệu mẫu Chủ đề BĐS (Topics)
 const mockTopics = [
@@ -180,9 +208,13 @@ export async function POST(request: Request) {
 
       const body = await request.json();
       const { username, password } = body;
+      const deviceId = normalizeDeviceId(body.device_id);
 
       if (!username || !password) {
         return NextResponse.json({ success: false, message: 'Thiếu tài khoản hoặc mật khẩu' }, { status: 400 });
+      }
+      if (!deviceId) {
+        return NextResponse.json({ success: false, message: 'Thiếu mã thiết bị đăng nhập' }, { status: 400 });
       }
 
       const user = await prisma.user.findUnique({
@@ -217,10 +249,29 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác' }, { status: 401 });
       }
 
-      const sid = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-      await redis.set(`session:${userId}`, sid, 'EX', 24 * 60 * 60); // 24 giờ
+      const sessionKey = `session:${userId}`;
+      const activeSession = parseStoredSession(await redis.get(sessionKey));
+      if (activeSession && activeSession.deviceId && activeSession.deviceId !== deviceId) {
+        return NextResponse.json({ success: false, message: SINGLE_DEVICE_LOGIN_MESSAGE }, { status: 409 });
+      }
+      if (activeSession && !activeSession.deviceId) {
+        return NextResponse.json({ success: false, message: SINGLE_DEVICE_LOGIN_MESSAGE }, { status: 409 });
+      }
 
-      const token = await signKeyboardToken({ sub: userId, role: role, sid: sid });
+      const sid = randomUUID();
+      const sessionValue = JSON.stringify({
+        sid,
+        deviceId,
+        createdAt: new Date().toISOString(),
+      });
+      const writeResult = activeSession
+        ? await redis.set(sessionKey, sessionValue, 'EX', KEYBOARD_SESSION_TTL_SECONDS)
+        : await redis.set(sessionKey, sessionValue, 'EX', KEYBOARD_SESSION_TTL_SECONDS, 'NX');
+      if (writeResult !== 'OK') {
+        return NextResponse.json({ success: false, message: SINGLE_DEVICE_LOGIN_MESSAGE }, { status: 409 });
+      }
+
+      const token = await signKeyboardToken({ sub: userId, role: role, sid: sid, did: deviceId });
 
       return NextResponse.json({
         success: true,
@@ -274,6 +325,20 @@ export async function POST(request: Request) {
           message: 'Lỗi khi kết nối dịch vụ AI: ' + aiError.message
         }, { status: 500 });
       }
+    }
+
+    if (action === 'logout') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: true });
+      }
+
+      const token = authHeader.substring(7);
+      const payload = await verifyKeyboardToken(token);
+      if (payload) {
+        await redis.del(`session:${payload.sub}`);
+      }
+      return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: 'Hành động không hợp lệ' }, { status: 400 });
