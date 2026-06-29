@@ -110,12 +110,12 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-container">
-      <div className="flex justify-between items-center mb-8">
+      <div className="page-header">
         <div>
-          <h1 style={{ marginBottom: 0 }}>Tổng quan (Dashboard)</h1>
-          <p>KPI và báo cáo tài chính (Timezone: Asia/Ho_Chi_Minh)</p>
+          <h1>Tổng quan</h1>
+          <p>KPI và báo cáo tài chính (Asia/Ho_Chi_Minh)</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-2">
           <select 
             className="btn btn-outline" 
             style={{ background: 'var(--surface-bg)' }}
@@ -144,9 +144,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge"><DollarSign size={16} /></div>
               </div>
               <div className="kpi-value">{(summaryData?.netRevenue || 0).toLocaleString('vi-VN')} ₫</div>
-              <div className="kpi-trend up">
-                <span>↑ 14.2%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Doanh thu thực tế sau hoàn tiền</div>
             </div>
             
             <div className="kpi-card">
@@ -155,9 +153,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge success"><DollarSign size={16} /></div>
               </div>
               <div className="kpi-value">{(summaryData?.grossRevenue || 0).toLocaleString('vi-VN')} ₫</div>
-              <div className="kpi-trend up">
-                <span>↑ 8.4%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Tổng thanh toán ghi nhận</div>
             </div>
 
             <div className="kpi-card">
@@ -166,9 +162,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge"><Activity size={16} /></div>
               </div>
               <div className="kpi-value">{(summaryData?.mrr || 0).toLocaleString('vi-VN')} ₫</div>
-              <div className="kpi-trend up">
-                <span>↑ 18.1%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Doanh thu định kỳ hàng tháng</div>
             </div>
 
             <div className="kpi-card">
@@ -177,9 +171,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge danger"><ArrowDownRight size={16} /></div>
               </div>
               <div className="kpi-value">{(summaryData?.refund || 0).toLocaleString('vi-VN')} ₫</div>
-              <div className="kpi-trend down">
-                <span>↓ 24.3%</span> <span className="trend-label">cải thiện</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Tổng tiền hoàn trả khách hàng</div>
             </div>
 
             <div className="kpi-card">
@@ -188,9 +180,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge"><Users size={16} /></div>
               </div>
               <div className="kpi-value">{summaryData?.activeUsers || 0}</div>
-              <div className="kpi-trend up">
-                <span>↑ 5.6%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>User có tương tác bàn phím</div>
             </div>
             
             <div className="kpi-card">
@@ -199,9 +189,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge warning"><Users size={16} /></div>
               </div>
               <div className="kpi-value">{summaryData?.trialUsers || 0}</div>
-              <div className="kpi-trend up">
-                <span>↑ 12.0%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Tài khoản đang dùng thử premium</div>
             </div>
             
             <div className="kpi-card">
@@ -210,9 +198,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge"><CreditCard size={16} /></div>
               </div>
               <div className="kpi-value">{summaryData?.activeSubscriptions || 0}</div>
-              <div className="kpi-trend up">
-                <span>↑ 4.1%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Gói cước Premium đang kích hoạt</div>
             </div>
 
             <div className="kpi-card">
@@ -221,9 +207,7 @@ export default function Dashboard() {
                 <div className="kpi-icon-badge"><Percent size={16} /></div>
               </div>
               <div className="kpi-value">{(summaryData?.arpu || 0).toLocaleString('vi-VN')} ₫</div>
-              <div className="kpi-trend up">
-                <span>↑ 1.8%</span> <span className="trend-label">tháng này</span>
-              </div>
+              <div className="trend-label" style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>Doanh thu bình quân trên mỗi user</div>
             </div>
           </div>
           

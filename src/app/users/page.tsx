@@ -284,12 +284,12 @@ export default function UsersPage() {
   return (
     <div style={{ padding: '0' }}>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="page-header">
         <div>
-          <h1 style={{ marginBottom: 0 }}>{isSale ? 'User của tôi' : 'Quản lý Người dùng'}</h1>
+          <h1>{isSale ? 'User của tôi' : 'Quản lý Người dùng'}</h1>
           <p>{isSale ? 'Tạo user bàn phím và bán gói dịch vụ' : 'Thành viên bàn phím & Quản trị viên trong PostgreSQL'}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button 
             id="btn-add-user" 
             className="btn btn-primary" 
@@ -305,9 +305,9 @@ export default function UsersPage() {
       </div>
 
       {/* Search */}
-      <div className="glass-panel mb-6 p-4">
+      <div className="mb-4">
         <div className="user-search-container">
-          <Search size={18} color="var(--text-secondary)" />
+          <Search size={16} color="var(--text-secondary)" />
           <input
             type="text"
             className="user-search-input"
