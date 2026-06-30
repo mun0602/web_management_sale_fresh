@@ -41,12 +41,18 @@ export async function POST(req: NextRequest) {
     const filePath = join(uploadDir, fileName);
     await writeFile(filePath, buffer);
 
-    // Tính toán version_code tiếp theo
-    const maxRelease = await prisma.apkRelease.findFirst({
-      orderBy: { versionCode: 'desc' },
-      select: { versionCode: true }
-    });
-    const nextVersionCode = (maxRelease?.versionCode || 0) + 1;
+    // Tính toán hoặc sử dụng version_code truyền lên
+    const reqVersionCode = formData.get('version_code') as string | null;
+    let nextVersionCode: number;
+    if (reqVersionCode) {
+      nextVersionCode = parseInt(reqVersionCode, 10);
+    } else {
+      const maxRelease = await prisma.apkRelease.findFirst({
+        orderBy: { versionCode: 'desc' },
+        select: { versionCode: true }
+      });
+      nextVersionCode = (maxRelease?.versionCode || 0) + 1;
+    }
 
     // Lưu thông tin vào Database
     const release = await prisma.apkRelease.create({
