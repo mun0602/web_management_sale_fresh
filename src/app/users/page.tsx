@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus } from 'lucide-react';
+import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus, Users, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/api/users';
 import { plansApi } from '@/api/plans';
@@ -298,13 +298,59 @@ export default function UsersPage() {
 
   return (
     <div style={{ padding: '0' }}>
-      {/* Header */}
-      <div className="page-header">
+      {/* Header Card */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(6, 182, 212, 0.06) 100%)',
+        border: '1px solid var(--surface-border)',
+        borderRadius: '16px',
+        padding: '1.5rem',
+        marginBottom: '1.5rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        boxShadow: 'var(--glass-shadow)',
+        backdropFilter: 'blur(8px)'
+      }}>
         <div>
-          <h1>{isSale ? 'User của tôi' : 'Quản lý Người dùng'}</h1>
-          <p>{isSale ? 'Tạo user bàn phím và bán gói dịch vụ' : 'Thành viên bàn phím & Quản trị viên trong PostgreSQL'}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.25rem' }}>
+            <div style={{
+              background: 'var(--primary-light)',
+              color: 'var(--primary)',
+              borderRadius: '8px',
+              padding: '0.375rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Users size={20} />
+            </div>
+            <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>{isSale ? 'User của tôi' : 'Quản lý Người dùng'}</h1>
+          </div>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            {isSale ? 'Tạo user bàn phím và bán gói dịch vụ' : 'Quản trị thành viên sử dụng bàn phím ảo & Quản lý phân quyền hệ thống'}
+          </p>
         </div>
-        <div className="flex gap-2">
+        
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {!isSale && totalItems > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              background: 'var(--surface-bg)',
+              border: '1px solid var(--surface-border)',
+              padding: '0.5rem 0.875rem',
+              borderRadius: '10px',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              color: 'var(--text-secondary)'
+            }}>
+              <span>Tổng số thành viên: <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{totalItems}</strong></span>
+            </div>
+          )}
+          
           <button 
             id="btn-add-user" 
             className="btn btn-primary" 
@@ -312,16 +358,31 @@ export default function UsersPage() {
               resetForm(); 
               setShowUserModal(true); 
             }}
+            style={{
+              padding: '0.55rem 1.15rem',
+              borderRadius: '10px',
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
           >
-            <UserPlus size={16} style={{ marginRight: '0.4rem' }} />
+            <UserPlus size={16} />
             Thêm User
           </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <div className="user-search-container">
+      {/* Filter and Search Toolbar */}
+      <div style={{
+        display: 'flex',
+        gap: '0.75rem',
+        marginBottom: '1.25rem',
+        flexWrap: 'wrap',
+        width: '100%',
+        alignItems: 'center'
+      }}>
+        <div className="user-search-container" style={{ flex: '1', minWidth: '280px' }}>
           <Search size={16} color="var(--text-secondary)" />
           <input
             type="text"
@@ -331,6 +392,49 @@ export default function UsersPage() {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
+        
+        {!isSale && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'var(--surface-bg)',
+              border: '1px solid var(--surface-border)',
+              padding: '0.55rem 0.75rem',
+              borderRadius: '8px',
+              color: 'var(--text-secondary)',
+              fontSize: '0.85rem',
+              boxShadow: 'var(--glass-shadow)'
+            }}>
+              <Filter size={14} />
+              <span>Quyền:</span>
+              <select
+                value={currentRole}
+                onChange={(e) => {
+                  setCurrentRole(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-primary)',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                <option value="">Tất cả</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+                <option value="SALE">Sale</option>
+                <option value="SUPPORT">Support</option>
+                <option value="FINANCE">Finance</option>
+                <option value="USER">User</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -362,23 +466,63 @@ export default function UsersPage() {
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
                     <td data-label="Họ tên / Tài khoản" style={{ padding: '1rem' }}>
-                      <div className="user-info-cell">
-                        <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
-                        {isLocked && <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>LOCKED</span>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'inherit', width: '100%' }}>
+                        {/* Avatar */}
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          background: u.role === 'SUPER_ADMIN' 
+                            ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)'
+                            : u.role === 'SALE'
+                            ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                            : u.role === 'SUPPORT'
+                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                            : u.role === 'FINANCE'
+                            ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
+                            : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '0.85rem',
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+                          flexShrink: 0
+                        }}>
+                          {(u.name || u.email || 'U')[0].toUpperCase()}
+                        </div>
+                        
+                        <div style={{ textAlign: 'left' }}>
+                          <div className="user-info-cell" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', justifyContent: 'flex-start' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{u.name || 'Chưa cập nhật'}</div>
+                            {u.role !== 'USER' && (
+                              <span className={`badge ${
+                                u.role === 'SUPER_ADMIN' ? 'badge-danger' : u.role === 'SALE' ? 'badge-primary' : 'badge-warning'
+                              }`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                                {u.role}
+                              </span>
+                            )}
+                            {isLocked && <span className="badge badge-danger" style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>LOCKED</span>}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.email}</div>
                     </td>
                     <td data-label="SĐT" style={{ padding: '1rem' }}>{u.phone || '—'}</td>
                     <td data-label="Gói hiện tại" style={{ padding: '1rem' }}>
                       {latestSub ? (
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{latestSub.plan.name}</div>
-                          <span className={`badge ${hasActiveSub ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
-                            {latestSub.status.toUpperCase()}
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{latestSub.plan.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
+                            Hạn: {new Date(latestSub.endDate).toLocaleDateString('vi-VN')}
+                          </div>
+                          <span className={`badge ${hasActiveSub ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.6rem', marginTop: '0.25rem', padding: '0.1rem 0.3rem' }}>
+                            {hasActiveSub ? 'ĐANG HOẠT ĐỘNG' : 'HẾT HẠN'}
                           </span>
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Chưa đăng ký</span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>Chưa đăng ký</span>
                       )}
                     </td>
                     <td data-label="AI Credit" style={{ padding: '1rem' }}>
@@ -391,10 +535,17 @@ export default function UsersPage() {
                     </td>
                     {!isSale && (
                       <td data-label="Thao tác" style={{ padding: '1rem' }}>
-                        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                        <div className="flex gap-2" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           <button
                             className="btn btn-outline"
-                            style={{ padding: '0.25rem 0.5rem', color: 'var(--success)', borderColor: 'var(--success)' }}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              color: 'var(--success)',
+                              background: 'rgba(16, 185, 129, 0.05)',
+                              border: '1px solid rgba(16, 185, 129, 0.15)',
+                              cursor: 'pointer'
+                            }}
                             onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
                             title="Cấp thêm AI credit"
                             aria-label="Cấp thêm AI credit"
@@ -403,7 +554,14 @@ export default function UsersPage() {
                           </button>
                           <button
                             className="btn btn-outline"
-                            style={{ padding: '0.25rem 0.5rem', color: 'var(--warning)', borderColor: 'var(--warning)' }}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              color: 'var(--warning)',
+                              background: 'rgba(245, 158, 11, 0.05)',
+                              border: '1px solid rgba(245, 158, 11, 0.15)',
+                              cursor: 'pointer'
+                            }}
                             onClick={() => handleResetQuota(u)}
                             title="Reset AI quota"
                             aria-label="Reset AI quota về 0"
@@ -412,7 +570,14 @@ export default function UsersPage() {
                           </button>
                           <button
                             className="btn btn-outline"
-                            style={{ padding: '0.25rem 0.5rem' }}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              color: 'var(--primary)',
+                              background: 'var(--primary-light)',
+                              border: '1px solid rgba(99, 102, 241, 0.15)',
+                              cursor: 'pointer'
+                            }}
                             onClick={() => handleChangePassword(u.id, u.email)}
                             title="Đổi mật khẩu"
                             aria-label="Đổi mật khẩu"
@@ -422,9 +587,12 @@ export default function UsersPage() {
                           <button
                             className="btn btn-outline"
                             style={{
-                              padding: '0.25rem 0.5rem',
-                              color: isLocked ? 'var(--warning)' : 'inherit',
-                              borderColor: isLocked ? 'var(--warning)' : 'inherit'
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              color: isLocked ? 'var(--warning)' : 'var(--text-secondary)',
+                              background: isLocked ? 'rgba(245, 158, 11, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                              border: isLocked ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid var(--surface-border)',
+                              cursor: 'pointer'
                             }}
                             onClick={() => handleToggleLock(u.id, u.email, u.status)}
                             title={isLocked ? 'Mở khóa' : 'Khóa tài khoản'}
@@ -434,7 +602,14 @@ export default function UsersPage() {
                           </button>
                           <button
                             className="btn btn-outline"
-                            style={{ padding: '0.25rem 0.5rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              color: 'var(--danger)',
+                              background: 'rgba(244, 63, 94, 0.05)',
+                              border: '1px solid rgba(244, 63, 94, 0.15)',
+                              cursor: 'pointer'
+                            }}
                             onClick={() => handleDeleteUser(u.id, u.email)}
                             title="Xóa người dùng"
                             aria-label="Xóa người dùng"
