@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -8,10 +8,14 @@ import { LayoutDashboard, Users, CreditCard, Activity, Package, LogOut, FileText
 import { authApi } from '@/api/auth';
 
 const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [role, setRole] = useState('ADMIN');
+  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,7 +40,61 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
     return () => controller.abort();
   }, [pathname, router]);
 
-  const closeSidebar = () => setSidebarOpen(false);
+  const openDrawer = () => {
+    setIsOpen(true);
+    requestAnimationFrame(() => {
+      if (scrollerRef.current && window.innerWidth <= 768) {
+        scrollerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+      }
+    });
+  };
+
+  const closeDrawer = () => {
+    if (scrollerRef.current && window.innerWidth <= 768) {
+      scrollerRef.current.scrollTo({ left: scrollerRef.current.offsetWidth, behavior: 'smooth' });
+    }
+  };
+
+  // Observe drawer visibility to update pointer-events state
+  useEffect(() => {
+    if (window.innerWidth > 768) return;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    const visibleThreshold = 1 / window.innerWidth;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries.at(-1);
+        if (entry && entry.intersectionRatio < visibleThreshold) {
+          setIsOpen(false);
+        }
+      },
+      { root: drawerRef.current, threshold: [visibleThreshold, 1] }
+    );
+    observer.observe(sheet);
+    return () => observer.disconnect();
+  }, []);
+
+  // Close drawer on navigation
+  useEffect(() => {
+    closeDrawer();
+  }, [pathname]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleLightDismiss = (e: React.MouseEvent) => {
+    if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+      closeDrawer();
+    }
+  };
+
   const isSale = role === 'SALE';
 
   const handleLogout = async () => {
@@ -58,32 +116,28 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="app-layout">
-      {/* Mobile Overlay */}
-      <div 
-        className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} 
-        onClick={closeSidebar}
-      />
-
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="flex justify-between items-center mb-8">
-          <div className="sidebar-logo" style={{ marginBottom: 0 }}>
-            <Activity size={24} color="var(--primary)" />
-            SaleKeyboard
-          </div>
-          <button className="mobile-menu-btn" style={{ marginRight: 0 }} onClick={closeSidebar} aria-label="Đóng menu quản trị">
-            <X size={24} />
-          </button>
-        </div>
+      <div className={`Drawer ${isOpen ? 'is-open' : ''}`} id="drawer" ref={drawerRef} onClick={handleLightDismiss}>
+        <div className="Drawer-scroller" ref={scrollerRef}>
+          <aside className="Drawer-sheet sidebar" ref={sheetRef}>
+            <div className="flex justify-between items-center mb-8">
+              <div className="sidebar-logo" style={{ marginBottom: 0 }}>
+                <Activity size={24} color="var(--primary)" />
+                SaleKeyboard
+              </div>
+              <button className="mobile-menu-btn" style={{ marginRight: 0 }} onClick={closeDrawer} aria-label="Đóng menu quản trị">
+                <X size={24} />
+              </button>
+            </div>
         
         <ul className="nav-menu">
           <li>
-            <Link href="/" onClick={closeSidebar} className={`nav-item ${pathname === '/' ? 'active' : ''}`}>
+            <Link href="/" onClick={closeDrawer} className={`nav-item ${pathname === '/' ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               {isSale ? 'Doanh thu của tôi' : 'Tổng quan'}
             </Link>
           </li>
           <li>
-            <Link href="/users" onClick={closeSidebar} className={`nav-item ${pathname === '/users' ? 'active' : ''}`}>
+            <Link href="/users" onClick={closeDrawer} className={`nav-item ${pathname === '/users' ? 'active' : ''}`}>
               <Users size={20} />
               {isSale ? 'Tạo user' : 'Người dùng'}
             </Link>
@@ -91,39 +145,39 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
           {!isSale && (
             <>
               <li>
-                <Link href="/plans" onClick={closeSidebar} className={`nav-item ${pathname === '/plans' ? 'active' : ''}`}>
+                <Link href="/plans" onClick={closeDrawer} className={`nav-item ${pathname === '/plans' ? 'active' : ''}`}>
                   <Package size={20} />
                   Gói dịch vụ
                 </Link>
               </li>
               {role === 'SUPER_ADMIN' && (
                 <li>
-                  <Link href="/sales" onClick={closeSidebar} className={`nav-item ${pathname === '/sales' ? 'active' : ''}`}>
+                  <Link href="/sales" onClick={closeDrawer} className={`nav-item ${pathname === '/sales' ? 'active' : ''}`}>
                     <BarChart3 size={20} />
                     Doanh thu Sale
                   </Link>
                 </li>
               )}
               <li>
-                <Link href="/subscriptions" onClick={closeSidebar} className={`nav-item ${pathname === '/subscriptions' ? 'active' : ''}`}>
+                <Link href="/subscriptions" onClick={closeDrawer} className={`nav-item ${pathname === '/subscriptions' ? 'active' : ''}`}>
                   <CreditCard size={20} />
                   Thuê bao
                 </Link>
               </li>
               <li>
-                <Link href="/payments" onClick={closeSidebar} className={`nav-item ${pathname === '/payments' ? 'active' : ''}`}>
+                <Link href="/payments" onClick={closeDrawer} className={`nav-item ${pathname === '/payments' ? 'active' : ''}`}>
                   <Activity size={20} />
                   Giao dịch
                 </Link>
               </li>
               <li>
-                <Link href="/ai-quota" onClick={closeSidebar} className={`nav-item ${pathname === '/ai-quota' ? 'active' : ''}`}>
+                <Link href="/ai-quota" onClick={closeDrawer} className={`nav-item ${pathname === '/ai-quota' ? 'active' : ''}`}>
                   <Zap size={20} />
                   Quản lý AI
                 </Link>
               </li>
               <li>
-                <Link href="/audit" onClick={closeSidebar} className={`nav-item ${pathname === '/audit' ? 'active' : ''}`}>
+                <Link href="/audit" onClick={closeDrawer} className={`nav-item ${pathname === '/audit' ? 'active' : ''}`}>
                   <FileText size={20} />
                   Audit Log
                 </Link>
@@ -143,11 +197,13 @@ const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
           </button>
         </div>
       </aside>
+      </div>
+      </div>
       
       <main className="main-content">
         <header className="top-header">
           <div className="flex items-center">
-            <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Mở menu quản trị" aria-expanded={sidebarOpen}>
+            <button className="mobile-menu-btn" onClick={() => openDrawer()} aria-label="Mở menu quản trị" aria-expanded={isOpen}>
               <Menu size={24} />
             </button>
             <div>
