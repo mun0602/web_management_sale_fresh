@@ -111,6 +111,7 @@ Yêu cầu phong cách viết bài:
 - Mức độ sử dụng Emoji: ${profile.emojiLevel}.
 - Lời kêu gọi hành động cuối bài (CTA): ${profile.defaultCta || ''}.
 - Danh sách Hashtags đi kèm: ${profile.defaultHashtags || ''}.
+- BẮT BUỘC: Bài viết phải cực kỳ ngắn gọn, súc tích và dễ đọc trên di động. Giới hạn độ dài tuyệt đối dưới 12 dòng và dưới 180 từ.
 `;
 
     if (customInstruction) {
