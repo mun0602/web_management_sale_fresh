@@ -327,6 +327,110 @@ export async function POST(request: Request) {
       }
     }
 
+    if (action === 'suggest-reply') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: false, message: 'Chưa xác thực' }, { status: 401 });
+      }
+
+      const token = authHeader.substring(7);
+      const payload = await verifyKeyboardToken(token);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn hoặc không hợp lệ' }, { status: 401 });
+      }
+
+      const quota = await checkAndIncrAIQuota(payload.sub, payload.role);
+      if (!quota.allowed) {
+        return NextResponse.json({
+          success: false,
+          message: `Bạn đã vượt quá hạn mức sử dụng AI hàng ngày (${quota.limit} lượt/ngày) của gói cước hiện tại. Vui lòng nâng cấp gói cước để tiếp tục sử dụng!`
+        }, { status: 403 });
+      }
+
+      const body = await request.json();
+      const { customer_message } = body;
+
+      if (!customer_message) {
+        return NextResponse.json({ success: false, message: 'Tin nhắn khách hàng không được rỗng' }, { status: 400 });
+      }
+
+      try {
+        const GO_SERVER_URL = process.env.GO_SERVER_URL || 'http://localhost:8080';
+        const response = await axios.post(`${GO_SERVER_URL}/api/ai/sales/suggest-reply`, {
+          customer_message
+        }, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: response.data.data,
+          ai_limit: quota.limit,
+          ai_usage: quota.current
+        });
+      } catch (aiError: any) {
+        console.error('AI Error proxying suggest-reply to Go Backend:', aiError.message);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Lỗi khi kết nối dịch vụ AI: ' + aiError.message
+        }, { status: 500 });
+      }
+    }
+
+    if (action === 'modify-tone') {
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ success: false, message: 'Chưa xác thực' }, { status: 401 });
+      }
+
+      const token = authHeader.substring(7);
+      const payload = await verifyKeyboardToken(token);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Phiên đăng nhập hết hạn hoặc không hợp lệ' }, { status: 401 });
+      }
+
+      const quota = await checkAndIncrAIQuota(payload.sub, payload.role);
+      if (!quota.allowed) {
+        return NextResponse.json({
+          success: false,
+          message: `Bạn đã vượt quá hạn mức sử dụng AI hàng ngày (${quota.limit} lượt/ngày) của gói cước hiện tại. Vui lòng nâng cấp gói cước để tiếp tục sử dụng!`
+        }, { status: 403 });
+      }
+
+      const body = await request.json();
+      const { draft_message, tone } = body;
+
+      if (!draft_message || !tone) {
+        return NextResponse.json({ success: false, message: 'Thiếu nội dung nháp hoặc tone giọng' }, { status: 400 });
+      }
+
+      try {
+        const GO_SERVER_URL = process.env.GO_SERVER_URL || 'http://localhost:8080';
+        const response = await axios.post(`${GO_SERVER_URL}/api/ai/sales/modify-tone`, {
+          draft_message,
+          tone
+        }, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        });
+
+        return NextResponse.json({
+          success: true,
+          original: response.data.original,
+          modified: response.data.modified,
+          ai_limit: quota.limit,
+          ai_usage: quota.current
+        });
+      } catch (aiError: any) {
+        console.error('AI Error proxying modify-tone to Go Backend:', aiError.message);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Lỗi khi kết nối dịch vụ AI: ' + aiError.message
+        }, { status: 500 });
+      }
+    }
+
     if (action === 'logout') {
       const authHeader = request.headers.get('Authorization');
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
