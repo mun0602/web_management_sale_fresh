@@ -54,6 +54,6 @@ export const config = {
      * - apk (Trang quản lý APK)
      * - downloads (Thư mục chứa file tĩnh APK)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|apk|downloads).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|apk|downloads|test-deploy).*)',
   ],
 };
