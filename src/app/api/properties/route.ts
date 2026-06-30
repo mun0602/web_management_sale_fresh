@@ -72,13 +72,15 @@ export async function GET(request: Request) {
     }
   }
 
-  let orderByClause: any = [{ isPinned: 'desc' }, { sortOrder: 'asc' }, { updatedAt: 'desc' }];
+  let orderByClause: any = [{ isPinned: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }];
   if (sort === 'price_asc') {
-    orderByClause = [{ priceAmount: 'asc' }, { updatedAt: 'desc' }];
+    orderByClause = [{ priceAmount: 'asc' }, { createdAt: 'desc' }];
   } else if (sort === 'price_desc') {
-    orderByClause = [{ priceAmount: 'desc' }, { updatedAt: 'desc' }];
+    orderByClause = [{ priceAmount: 'desc' }, { createdAt: 'desc' }];
   } else if (sort === 'updated_at') {
     orderByClause = [{ updatedAt: 'desc' }];
+  } else if (sort === 'created_at') {
+    orderByClause = [{ createdAt: 'desc' }];
   }
 
   const properties = await prisma.property.findMany({

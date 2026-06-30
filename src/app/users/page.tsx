@@ -43,6 +43,9 @@ export default function UsersPage() {
   const [currentRole, setCurrentRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Modal tạo người dùng (gộp chung)
   const [showUserModal, setShowUserModal] = useState(false);
@@ -64,22 +67,34 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { q: searchQuery, role: currentRole === 'SALE' ? 'user' : 'all' };
+      const params: Record<string, any> = { 
+        q: searchQuery, 
+        role: currentRole === 'SALE' ? 'user' : 'all',
+        page: currentPage,
+        limit: limit
+      };
       const response = await usersApi.getUsers(params);
       const list = (response.data as unknown as User[]) || [];
       setUsers(list);
+      if (response.meta) {
+        setTotalItems(response.meta.total || 0);
+      }
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || 'Lỗi khi tải dữ liệu người dùng';
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, currentRole]);
+  }, [searchQuery, currentRole, currentPage, limit]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timer);
   }, [fetchUsers]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -331,11 +346,11 @@ export default function UsersPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '1rem' }}>User / Tài khoản</th>
+                <th style={{ padding: '1rem' }}>Họ tên / Tài khoản</th>
                 <th style={{ padding: '1rem' }}>SĐT</th>
                 <th style={{ padding: '1rem' }}>Gói hiện tại</th>
                 <th style={{ padding: '1rem' }}>AI Credit hôm nay</th>
-                <th style={{ padding: '1rem' }}>TK</th>
+                <th style={{ padding: '1rem' }}>Trạng thái</th>
                 {!isSale && <th style={{ padding: '1rem' }}>Thao tác</th>}
               </tr>
             </thead>
@@ -346,7 +361,7 @@ export default function UsersPage() {
                 const isLocked = u.status === 'locked';
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--surface-border)' }}>
-                    <td data-label="Tài khoản" style={{ padding: '1rem' }}>
+                    <td data-label="Họ tên / Tài khoản" style={{ padding: '1rem' }}>
                       <div className="user-info-cell">
                         <div style={{ fontWeight: 500 }}>{u.name || 'Chưa cập nhật'}</div>
                         {isLocked && <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>LOCKED</span>}
@@ -434,6 +449,74 @@ export default function UsersPage() {
               })}
             </tbody>
           </table>
+        )}
+        
+        {/* Pagination */}
+        {!loading && totalItems > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1rem',
+            borderTop: '1px solid var(--surface-border)',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary)'
+          }}>
+            <div>
+              Hiển thị từ <strong>{Math.min(totalItems, (currentPage - 1) * limit + 1)}</strong> đến{' '}
+              <strong>{Math.min(totalItems, currentPage * limit)}</strong> trong tổng số <strong>{totalItems}</strong> thành viên
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginRight: '1rem' }}>
+                <span style={{ marginRight: '0.5rem' }}>Số dòng:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--surface-border)',
+                    background: 'var(--bg-color)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <button
+                className="btn btn-outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+              >
+                Trang trước
+              </button>
+              
+              <span style={{ padding: '0 0.25rem' }}>
+                Trang <strong>{currentPage}</strong> / {Math.ceil(totalItems / limit) || 1}
+              </span>
+              
+              <button
+                className="btn btn-outline"
+                disabled={currentPage >= Math.ceil(totalItems / limit)}
+                onClick={() => setCurrentPage((prev) => Math.min(Math.ceil(totalItems / limit), prev + 1))}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+              >
+                Trang sau
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

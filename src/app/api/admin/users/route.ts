@@ -44,6 +44,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
     const role = searchParams.get('role') || 'all';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.max(1, parseInt(searchParams.get('limit') || '10'));
+    const skip = (page - 1) * limit;
 
     const whereClause: any = {};
     
@@ -62,8 +65,12 @@ export async function GET(request: Request) {
       whereClause.role = role.toUpperCase();
     }
 
+    const total = await prisma.user.count({ where: whereClause });
+
     const users = await prisma.user.findMany({
       where: whereClause,
+      skip,
+      take: limit,
       include: {
         subscriptions: {
           include: {
@@ -93,7 +100,12 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({
-      data: sanitizedUsers
+      data: sanitizedUsers,
+      meta: {
+        page,
+        limit,
+        total
+      }
     });
   } catch (error: any) {
     console.error('Error fetching users:', error);

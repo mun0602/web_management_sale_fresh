@@ -24,8 +24,8 @@ export async function GET(request: Request) {
     const toStr = searchParams.get('to');
     const query = (searchParams.get('q') || '').trim();
 
-    const fromDate = fromStr ? new Date(fromStr) : undefined;
-    const toDate = toStr ? new Date(toStr) : undefined;
+    const fromDate = fromStr ? new Date(`${fromStr}T00:00:00.000Z`) : undefined;
+    const toDate = toStr ? new Date(`${toStr}T23:59:59.999Z`) : undefined;
     const dateFilter = fromDate || toDate
       ? {
           createdAt: {

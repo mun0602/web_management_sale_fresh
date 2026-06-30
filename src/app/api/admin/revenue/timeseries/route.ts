@@ -16,8 +16,8 @@ export async function GET(request: Request) {
     const fromStr = searchParams.get('from') || '2026-05-25';
     const toStr = searchParams.get('to') || '2026-06-25';
 
-    const fromDate = new Date(fromStr);
-    const toDate = new Date(toStr);
+    const fromDate = new Date(`${fromStr}T00:00:00.000Z`);
+    const toDate = new Date(`${toStr}T23:59:59.999Z`);
     const salePaymentFilter = admin.role === 'SALE' ? { user: { createdBySaleId: admin.id } } : {};
 
     // 1. Lấy tất cả các giao dịch thanh toán thành công trong khoảng thời gian chỉ định
