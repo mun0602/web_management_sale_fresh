@@ -73,7 +73,7 @@ async function main() {
       price: 2800000,
       appleId: 'com.salekeyboard.lifetime.60d',
       googleId: 'com.salekeyboard.lifetime.60d',
-      features: 'Không giới hạn thiết bị,ai_unlimited,Quản lý nhóm,duration_days:60,fixed_price'
+      features: 'Không giới hạn thiết bị,ai_limit:50,Quản lý nhóm,duration_days:60,fixed_price'
     },
     // Các gói mua thêm hạn mức AI (Add-ons)
     {
