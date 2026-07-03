@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
 
     // Đọc file thành Buffer
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `sale_keyboard_${Date.now()}.apk`;
+    const originalExtension = file.name.split('.').pop() || 'apk';
+    const fileName = `sale_keyboard_${Date.now()}.${originalExtension}`;
     
     // Đảm bảo thư mục lưu trữ tồn tại
     const uploadDir = join(process.cwd(), 'public', 'downloads', 'apk');

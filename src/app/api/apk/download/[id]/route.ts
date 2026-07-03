@@ -34,10 +34,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const fileBuffer = await readFile(filePath);
 
+    const ext = release.fileName.split('.').pop() || 'apk';
+    const contentType = ext === 'tipa' || ext === 'ipa'
+      ? 'application/octet-stream'
+      : 'application/vnd.android.package-archive';
+
     return new NextResponse(fileBuffer, {
       headers: {
-        'Content-Type': 'application/vnd.android.package-archive',
-        'Content-Disposition': `attachment; filename="sale_keyboard_${release.versionName}.apk"`,
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="sale_keyboard_${release.versionName}.${ext}"`,
       },
     });
   } catch (error: any) {
