@@ -16,13 +16,6 @@ export async function PATCH(
         { status: 401 }
       );
     }
-    if (admin.role === 'SALE') {
-      return NextResponse.json(
-        { error: { message: 'Tài khoản sale không có quyền chỉnh sửa người dùng.' } },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { role, name, phone, password } = body;
 
@@ -34,6 +27,18 @@ export async function PATCH(
       return NextResponse.json(
         { error: { message: 'Không tìm thấy tài khoản người dùng.' } },
         { status: 404 }
+      );
+    }
+
+    if (admin.role === 'SALE' && existingUser.createdBySaleId !== admin.id) {
+      return NextResponse.json(
+        { error: { message: 'Tài khoản sale không có quyền chỉnh sửa người dùng này.' } },
+        { status: 403 }
+      );
+    } else if (admin.role !== 'SUPER_ADMIN' && admin.role !== 'SALE') {
+      return NextResponse.json(
+        { error: { message: 'Bạn không có quyền chỉnh sửa tài khoản người dùng.' } },
+        { status: 403 }
       );
     }
 
@@ -62,14 +67,15 @@ export async function PATCH(
     }
 
     if (password !== undefined && password !== '') {
-      // Chỉ SUPER_ADMIN mới được đổi mật khẩu người khác
-      if (admin.role !== 'SUPER_ADMIN' && admin.id !== id) {
+      // Cho phép SUPER_ADMIN đổi mật khẩu bất kỳ ai, hoặc SALE đổi mật khẩu của user do chính họ tạo
+      if (admin.role !== 'SUPER_ADMIN' && (admin.role !== 'SALE' || existingUser.createdBySaleId !== admin.id)) {
         return NextResponse.json(
           { error: { message: 'Bạn không có quyền thay đổi mật khẩu của tài khoản này.' } },
           { status: 403 }
         );
       }
       updateData.password = await bcrypt.hash(password, 10);
+      updateData.plainPassword = password;
     }
 
     const updatedUser = await prisma.user.update({
@@ -115,13 +121,6 @@ export async function DELETE(
       );
     }
 
-    if (admin.role !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { error: { message: 'Chỉ Super Admin mới được quyền xóa tài khoản.' } },
-        { status: 403 }
-      );
-    }
-
     const existingUser = await prisma.user.findUnique({
       where: { id },
     });
@@ -130,6 +129,13 @@ export async function DELETE(
       return NextResponse.json(
         { error: { message: 'Không tìm thấy người dùng cần xóa.' } },
         { status: 404 }
+      );
+    }
+
+    if (admin.role !== 'SUPER_ADMIN' && (admin.role !== 'SALE' || existingUser.createdBySaleId !== admin.id)) {
+      return NextResponse.json(
+        { error: { message: 'Bạn không có quyền xóa người dùng này.' } },
+        { status: 403 }
       );
     }
 

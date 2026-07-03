@@ -218,6 +218,7 @@ export async function POST(request: Request) {
         data: {
           email: account,
           password: passwordHash,
+          plainPassword: password,
           role: normalizedAccountRole,
           name: name || null,
           phone: phone || null,

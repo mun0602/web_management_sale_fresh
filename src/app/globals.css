@@ -19,6 +19,7 @@
   --surface-border: rgba(226, 232, 240, 0.9);
   --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
   --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.02), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --modal-bg: #ffffff;
   
   --sidebar-bg: rgba(255, 255, 255, 0.85); /* Distinct theme-aware sidebar background */
   --header-height: 72px;
@@ -43,6 +44,7 @@
   --surface-border: rgba(255, 255, 255, 0.08);
   --glass-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.1);
   --card-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  --modal-bg: #111827;
   
   --sidebar-bg: rgba(15, 23, 42, 0.85); /* Dark mode sidebar background */
 
@@ -812,7 +814,7 @@ td:last-child {
 .modal-card {
   width: 100%;
   max-width: 440px;
-  background: var(--surface-bg);
+  background: var(--modal-bg);
   border: 1px solid var(--surface-border);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15),
               0 10px 10px -5px rgba(0, 0, 0, 0.04);

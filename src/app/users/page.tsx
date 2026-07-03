@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus, Users, Filter } from 'lucide-react';
+import { Search, Lock, Trash2, Key, Unlock, Zap, RotateCcw, UserPlus, Users, Filter, Eye, EyeOff, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usersApi } from '@/api/users';
 import { plansApi } from '@/api/plans';
@@ -21,6 +21,7 @@ interface User {
   phone: string | null;
   status: string;
   createdAt: string;
+  plainPassword?: string | null;
   aiQuota?: AiQuota;
   subscriptions?: {
     id: string;
@@ -58,6 +59,14 @@ export default function UsersPage() {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [durationDays, setDurationDays] = useState(30);
   const [submitting, setSubmitting] = useState(false);
+
+  // Xem mật khẩu và sửa người dùng
+  const [showPasswordId, setShowPasswordId] = useState<string | null>(null);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   // Modal cấp thêm AI credit
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -197,6 +206,33 @@ export default function UsersPage() {
       fetchUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.error?.message || 'Lỗi kết nối máy chủ.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (u: User) => {
+    setEditTarget(u);
+    setEditName(u.name || '');
+    setEditPhone(u.phone || '');
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSubmitting(true);
+    try {
+      await usersApi.updateUser(editTarget.id, {
+        name: editName,
+        phone: editPhone,
+      });
+      toast.success('✅ Cập nhật thông tin thành công!');
+      setShowEditModal(false);
+      setEditTarget(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Lỗi khi cập nhật.');
     } finally {
       setSubmitting(false);
     }
@@ -533,57 +569,81 @@ export default function UsersPage() {
                         {isLocked ? 'LOCKED' : 'ACTIVE'}
                       </span>
                     </td>
-                    {!isSale && (
-                      <td data-label="Thao tác" style={{ padding: '1rem' }}>
+                    <td data-label="Thao tác" style={{ padding: '1rem' }}>
                         <div className="flex gap-2" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          <button
-                            className="btn btn-outline"
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              borderRadius: '8px',
-                              color: 'var(--success)',
-                              background: 'rgba(16, 185, 129, 0.05)',
-                              border: '1px solid rgba(16, 185, 129, 0.15)',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
-                            title="Cấp thêm AI credit"
-                            aria-label="Cấp thêm AI credit"
-                          >
-                            <Zap size={14} />
-                          </button>
-                          <button
-                            className="btn btn-outline"
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              borderRadius: '8px',
-                              color: 'var(--warning)',
-                              background: 'rgba(245, 158, 11, 0.05)',
-                              border: '1px solid rgba(245, 158, 11, 0.15)',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => handleResetQuota(u)}
-                            title="Reset AI quota"
-                            aria-label="Reset AI quota về 0"
-                          >
-                            <RotateCcw size={14} />
-                          </button>
-                          <button
-                            className="btn btn-outline"
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              borderRadius: '8px',
-                              color: 'var(--primary)',
-                              background: 'var(--primary-light)',
-                              border: '1px solid rgba(99, 102, 241, 0.15)',
-                              cursor: 'pointer'
-                            }}
-                            onClick={() => handleChangePassword(u.id, u.email)}
-                            title="Đổi mật khẩu"
-                            aria-label="Đổi mật khẩu"
-                          >
-                            <Key size={14} />
-                          </button>
+                        {!isSale && (
+                          <>
+                            <button
+                              className="btn btn-outline"
+                              style={{
+                                padding: '0.35rem 0.6rem',
+                                borderRadius: '8px',
+                                color: 'var(--success)',
+                                background: 'rgba(16, 185, 129, 0.05)',
+                                border: '1px solid rgba(16, 185, 129, 0.15)',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => { setCreditTarget(u); setCreditAmount(10); setShowCreditModal(true); }}
+                              title="Cấp thêm AI credit"
+                              aria-label="Cấp thêm AI credit"
+                            >
+                              <Zap size={14} />
+                            </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{
+                                padding: '0.35rem 0.6rem',
+                                borderRadius: '8px',
+                                color: 'var(--warning)',
+                                background: 'rgba(245, 158, 11, 0.05)',
+                                border: '1px solid rgba(245, 158, 11, 0.15)',
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => handleResetQuota(u)}
+                              title="Reset AI quota"
+                              aria-label="Reset AI quota về 0"
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          className="btn btn-outline"
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            borderRadius: '8px',
+                            color: 'var(--primary)',
+                            background: 'var(--primary-light)',
+                            border: '1px solid rgba(99, 102, 241, 0.15)',
+                            cursor: 'pointer',
+                            marginRight: '0.25rem'
+                          }}
+                          onClick={() => handleOpenEdit(u)}
+                          title="Sửa thông tin"
+                          aria-label="Sửa thông tin"
+                        >
+                          <Pencil size={14} />
+                        </button>
+
+                        <button
+                          className="btn btn-outline"
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            borderRadius: '8px',
+                            color: 'var(--primary)',
+                            background: 'var(--primary-light)',
+                            border: '1px solid rgba(99, 102, 241, 0.15)',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleChangePassword(u.id, u.email)}
+                          title="Đổi mật khẩu"
+                          aria-label="Đổi mật khẩu"
+                        >
+                          <Key size={14} />
+                        </button>
+
+                        {!isSale && (
                           <button
                             className="btn btn-outline"
                             style={{
@@ -600,6 +660,7 @@ export default function UsersPage() {
                           >
                             {isLocked ? <Unlock size={14} /> : <Lock size={14} />}
                           </button>
+                        )}
                           <button
                             className="btn btn-outline"
                             style={{
@@ -618,7 +679,6 @@ export default function UsersPage() {
                           </button>
                         </div>
                       </td>
-                    )}
                   </tr>
                 );
               })}
@@ -726,8 +786,17 @@ export default function UsersPage() {
               </div>
               <div>
                 <label htmlFor="user-pass" style={{ display: 'block', marginBottom: '0.25rem' }}>Mật khẩu khởi tạo <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input id="user-pass" type="password" required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
+                <div style={{ position: 'relative' }}>
+                  <input id="user-pass" type={showCreatePassword ? "text" : "password"} required minLength={6} value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', paddingRight: '2.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword(!showCreatePassword)}
+                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                  >
+                    {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
               {!isSale && (
                 <div>
@@ -840,6 +909,59 @@ export default function UsersPage() {
                 {submitting ? 'Đang cấp...' : `⚡ Cấp ${creditAmount} lượt`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chỉnh sửa thông tin */}
+      {showEditModal && editTarget && (
+        <div
+          role="dialog" aria-modal="true" aria-labelledby="modal-edit-title"
+          className="modal-overlay"
+          onClick={e => { if (e.target === e.currentTarget) { setShowEditModal(false); setEditTarget(null); }}}
+        >
+          <div className="modal-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <Pencil size={22} color="var(--primary)" />
+              <h3 id="modal-edit-title" style={{ margin: 0 }}>Sửa thông tin người dùng</h3>
+            </div>
+            <form onSubmit={handleEditUser} className="flex-col gap-4">
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem' }}>Tài khoản</label>
+                <input 
+                  type="text" 
+                  disabled 
+                  value={editTarget.email} 
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} 
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="edit-name" style={{ display: 'block', marginBottom: '0.25rem' }}>Họ và tên</label>
+                <input 
+                  id="edit-name" 
+                  type="text" 
+                  value={editName} 
+                  onChange={e => setEditName(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="edit-phone" style={{ display: 'block', marginBottom: '0.25rem' }}>Số điện thoại</label>
+                <input 
+                  id="edit-phone" 
+                  type="tel" 
+                  value={editPhone} 
+                  onChange={e => setEditPhone(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--surface-border)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button type="button" className="btn btn-outline" onClick={() => { setShowEditModal(false); setEditTarget(null); }}>Hủy</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? 'Đang lưu...' : '✅ Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
