@@ -217,8 +217,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: 'Thiếu mã thiết bị đăng nhập' }, { status: 400 });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email: username }
+      const user = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: username,
+            mode: 'insensitive'
+          }
+        }
       });
 
       let authenticated = false;

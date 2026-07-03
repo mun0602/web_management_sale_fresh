@@ -188,8 +188,13 @@ export async function POST(request: Request) {
     }
 
     // Kiểm tra tài khoản trùng lặp. Field DB vẫn là email để tránh migration.
-    const existingUser = await prisma.user.findUnique({
-      where: { email: account }
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: account,
+          mode: 'insensitive'
+        }
+      }
     });
 
     if (existingUser) {

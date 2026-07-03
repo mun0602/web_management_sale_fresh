@@ -115,8 +115,13 @@ export async function POST(request: Request) {
     // 1. Kiểm tra tài khoản trong database thật trước
     let user = null;
     try {
-      user = await prisma.user.findUnique({
-        where: { email }
+      user = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: email,
+            mode: 'insensitive'
+          }
+        }
       });
     } catch (dbError) {
       console.error('Database connection failed during login, trying fallback:', dbError);
